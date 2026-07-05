@@ -1,5 +1,25 @@
-import { imageNutritionPrompt, retryJsonPrompt, textNutritionPrompt } from "../src/prompts/nutritionPrompts";
-import type { AnalyzeInputType, AnalyzeResponse, Confidence, NutritionItem } from "../src/types/nutrition";
+type Confidence = "high" | "medium" | "low";
+type AnalyzeInputType = "text" | "image";
+
+interface NutritionItem {
+  name: string;
+  weight_g: number;
+  calories: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  confidence: Confidence;
+}
+
+interface AnalyzeResponse {
+  items: NutritionItem[];
+  total: {
+    calories: number;
+    protein_g: number;
+    fat_g: number;
+    carbs_g: number;
+  };
+}
 
 type VercelRequest = {
   method?: string;
@@ -24,6 +44,56 @@ interface GeminiPart {
     data: string;
   };
 }
+
+const nutritionJsonSchema = {
+  items: [
+    {
+      name: "string",
+      weight_g: "number",
+      calories: "number",
+      protein_g: "number",
+      fat_g: "number",
+      carbs_g: "number",
+      confidence: "high | medium | low"
+    }
+  ],
+  total: {
+    calories: "number",
+    protein_g: "number",
+    fat_g: "number",
+    carbs_g: "number"
+  }
+};
+
+const schemaText = JSON.stringify(nutritionJsonSchema, null, 2);
+
+const textNutritionPrompt = `
+Ты нутрициологический ассистент LarpFatless.
+Разбери описание еды на отдельные продукты или блюда и оцени КБЖУ.
+Верни только валидный JSON без markdown, без пояснений и без текста вокруг.
+Схема ответа:
+${schemaText}
+confidence:
+- high, если продукт и порция понятны;
+- medium, если часть порции оценочная;
+- low, если данных мало и значения приблизительные.
+`;
+
+const imageNutritionPrompt = `
+Ты мультимодальный нутрициологический ассистент LarpFatless.
+Определи еду на фото, оцени вес порций и КБЖУ по каждому элементу.
+Верни только валидный JSON без markdown, без пояснений и без текста вокруг.
+Схема ответа:
+${schemaText}
+Если еда плохо видна, все равно верни лучший вероятный расчет и confidence low.
+`;
+
+const retryJsonPrompt = `
+Предыдущий ответ не был валидным JSON.
+Верни тот же результат заново, строго как JSON по схеме:
+${schemaText}
+Без markdown, без комментариев, без текста до или после JSON.
+`;
 
 const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
