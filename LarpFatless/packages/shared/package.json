@@ -1,0 +1,28 @@
+{
+  "name": "@larpfatless/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./nutrition": {
+      "types": "./src/nutrition.d.ts",
+      "default": "./src/nutrition.js"
+    },
+    "./foodAnalysis": {
+      "types": "./src/foodAnalysis.d.ts",
+      "default": "./src/foodAnalysis.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

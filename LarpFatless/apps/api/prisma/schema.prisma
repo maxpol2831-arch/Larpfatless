@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sex {
+  male
+  female
+}
+
+enum ActivityLevel {
+  sedentary
+  light
+  moderate
+  active
+  athlete
+}
+
+enum NutritionGoal {
+  lose
+  maintain
+  gain
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String?
+  displayName    String?
+  sex            Sex
+  age            Int
+  heightCm       Int
+  weightKg       Decimal       @db.Decimal(5, 2)
+  activityLevel  ActivityLevel @default(moderate)
+  goal           NutritionGoal @default(maintain)
+  dailyCalories  Int
+  proteinTarget  Decimal       @db.Decimal(6, 2)
+  fatTarget      Decimal       @db.Decimal(6, 2)
+  carbsTarget    Decimal       @db.Decimal(6, 2)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  meals          Meal[]
+  weightLogs     WeightLog[]
+  favoriteFoods  FavoriteFood[]
+  aiAnalyses     AiAnalysis[]
+}
+
+model Meal {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealType      MealType
+  eatenAt       DateTime
+  title         String
+  photoUrl      String?
+  calories      Int
+  proteinGrams  Decimal     @db.Decimal(7, 2)
+  fatGrams      Decimal     @db.Decimal(7, 2)
+  carbsGrams    Decimal     @db.Decimal(7, 2)
+  portionGrams  Decimal     @db.Decimal(7, 2)
+  confidence    Decimal?    @db.Decimal(3, 2)
+  source        String      @default("manual")
+  syncState     String      @default("synced")
+  items         MealItem[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, eatenAt])
+}
+
+model FoodItem {
+  id            String      @id @default(cuid())
+  name          String
+  brand         String?
+  calories100g  Int
+  protein100g   Decimal     @db.Decimal(7, 2)
+  fat100g       Decimal     @db.Decimal(7, 2)
+  carbs100g     Decimal     @db.Decimal(7, 2)
+  createdAt     DateTime    @default(now())
+  mealItems     MealItem[]
+
+  @@index([name])
+}
+
+model MealItem {
+  id           String   @id @default(cuid())
+  mealId       String
+  meal         Meal     @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  foodItemId   String?
+  foodItem     FoodItem? @relation(fields: [foodItemId], references: [id], onDelete: SetNull)
+  name         String
+  grams        Decimal  @db.Decimal(7, 2)
+  calories     Int
+  proteinGrams Decimal  @db.Decimal(7, 2)
+  fatGrams     Decimal  @db.Decimal(7, 2)
+  carbsGrams   Decimal  @db.Decimal(7, 2)
+}
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg  Decimal  @db.Decimal(5, 2)
+  loggedAt  DateTime @default(now())
+  note      String?
+
+  @@index([userId, loggedAt])
+}
+
+model FavoriteFood {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  calories      Int
+  proteinGrams  Decimal  @db.Decimal(7, 2)
+  fatGrams      Decimal  @db.Decimal(7, 2)
+  carbsGrams    Decimal  @db.Decimal(7, 2)
+  portionGrams  Decimal  @db.Decimal(7, 2)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, title])
+}
+
+model AiAnalysis {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  imageHash    String   @unique
+  model        String
+  resultJson   Json
+  confidence   Decimal  @db.Decimal(3, 2)
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime?
+
+  @@index([imageHash])
+}

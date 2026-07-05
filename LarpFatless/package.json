@@ -1,0 +1,17 @@
+{
+  "name": "larpfatless",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LarpFatless mobile app and API monorepo.",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @larpfatless/api dev",
+    "dev:mobile": "pnpm --filter @larpfatless/mobile dev",
+    "dev:web": "pnpm --filter @larpfatless/web dev",
+    "build:web": "pnpm --filter @larpfatless/web build",
+    "preview:web": "pnpm --filter @larpfatless/web preview",
+    "test": "pnpm --filter @larpfatless/shared test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "LarpFatless",
+    "slug": "larpfatless",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "larpfatless",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.larpfatless.app"
+    },
+    "android": {
+      "package": "com.larpfatless.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#1E8A63"
+      }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LarpFatless использует фото еды для оценки калорий и БЖУ.",
+          "cameraPermission": "LarpFatless использует камеру, чтобы добавить приём пищи по фотографии."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000"
+    }
+  }
+}
