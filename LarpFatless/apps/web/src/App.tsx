@@ -2,28 +2,34 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
+  Bell,
   Bot,
   Camera,
   Check,
   ChevronLeft,
   Download,
+  DownloadCloud,
   FileText,
   Flame,
   ImagePlus,
   Mic,
+  Moon,
   RotateCcw,
   Save,
   Send,
+  Settings,
   Sparkles,
+  Sun,
   Trash2,
+  Upload,
   UserRound,
   Utensils
 } from "lucide-react";
-import { AnimatedProgressRing } from "./components/AnimatedProgressRing";
 import { CustomSegmentedControl } from "./components/CustomSegmentedControl";
 import { FoodItemCard } from "./components/FoodItemCard";
 import { GradientButton } from "./components/GradientButton";
 import { MainMenuHeader } from "./components/MainMenuHeader";
+import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
 import { compressImageToBase64 } from "./services/imageService";
@@ -39,12 +45,22 @@ import type {
   UserProfile,
   WeightGoal
 } from "./types/nutrition";
+import type { AppLanguage, TranslationKey } from "./i18n/translations";
 import "./theme/theme.css";
 import "./styles.css";
 
-type Screen = "home" | "chat" | "diary" | "profile" | "ai-calories";
+type Screen = "home" | "chat" | "diary" | "profile" | "ai-calories" | "settings";
 type ProfileFormValues = Pick<UserProfile, "name" | "gender" | "age" | "heightCm" | "weightKg" | "activityLevel" | "goal" | "weeklyWeightChangeKg">;
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
+type AppSettings = {
+  theme: "dark" | "light";
+  assistantEnabled: boolean;
+  language: AppLanguage;
+  units: "kg" | "lb";
+  notifications: boolean;
+  nickname: string;
+};
+type TFunction = (key: TranslationKey) => string;
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -70,6 +86,19 @@ const goalLabels: Record<WeightGoal, string> = {
   gain: "Набор массы"
 };
 
+const activityLabelEn: Record<ActivityLevel, string> = {
+  sedentary: "Sedentary",
+  light: "Light",
+  moderate: "Moderate",
+  high: "High"
+};
+
+const goalLabelEn: Record<WeightGoal, string> = {
+  lose: "Weight loss",
+  maintain: "Maintenance",
+  gain: "Muscle gain"
+};
+
 const activityFactor: Record<ActivityLevel, number> = {
   sedentary: 1.2,
   light: 1.375,
@@ -88,10 +117,34 @@ const defaultForm: ProfileFormValues = {
   weeklyWeightChangeKg: 0.3
 };
 
+const defaultSettings: AppSettings = {
+  theme: "dark",
+  assistantEnabled: true,
+  language: "ru",
+  units: "kg",
+  notifications: false,
+  nickname: ""
+};
+
+const SETTINGS_KEY = "larpfatless-settings-v1";
+const CHAT_KEY = "larpfatless-chat-v1";
+const LANGUAGE_KEY = "appLanguage";
+const NICKNAME_KEY = "larpfatless-nickname";
+
 const inputOptions = [
   { value: "text", label: "Текст" },
   { value: "voice", label: "Голос" }
 ] as const;
+
+const quickPrompts = [
+  { icon: "🍗", label: "Рассчитать еду", text: "Рассчитай КБЖУ: куриная грудка 150 г, рис 200 г, овощи 100 г" },
+  { icon: "🏋", label: "План тренировок", text: "Составь план тренировок на неделю для моей цели" },
+  { icon: "🥗", label: "Рацион", text: "Составь рацион на день под мою норму калорий и БЖУ" },
+  { icon: "💪", label: "Набор массы", text: "Как мне набрать массу без лишнего жира?" },
+  { icon: "🔥", label: "Похудение", text: "Какой дефицит калорий выбрать для похудения?" },
+  { icon: "⚡", label: "Сушка", text: "Как правильно сушиться и сохранить мышцы?" },
+  { icon: "💬", label: "Задать вопрос", text: "Сколько мне ещё можно съесть сегодня?" }
+];
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("home");
@@ -117,8 +170,34 @@ export function App() {
   const [imagePreview, setImagePreview] = useState("");
   const [toast, setToast] = useState("");
   const [avatarWink, setAvatarWink] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const t = useMemo(() => createTranslator(settings.language), [settings.language]);
+  const titleText = settings.nickname.trim() || t("defaultNickname");
+  const localizedInputOptions = useMemo(
+    () => [
+      { value: "text" as const, label: settings.language === "en" ? "Text" : "Текст" },
+      { value: "voice" as const, label: settings.language === "en" ? "Voice" : "Голос" }
+    ],
+    [settings.language]
+  );
+  const localizedQuickPrompts = useMemo(
+    () =>
+      settings.language === "en"
+        ? [
+            { icon: "🍗", label: "Track food", text: "Calculate macros: chicken breast 150 g, rice 200 g, vegetables 100 g" },
+            { icon: "🏋", label: "Workout plan", text: "Create a weekly workout plan for my goal" },
+            { icon: "🥗", label: "Meal plan", text: "Create a daily meal plan for my calories and macros" },
+            { icon: "💪", label: "Muscle gain", text: "How can I gain muscle without adding too much fat?" },
+            { icon: "🔥", label: "Weight loss", text: "What calorie deficit should I choose for weight loss?" },
+            { icon: "⚡", label: "Cutting", text: "How should I cut while keeping muscle?" },
+            { icon: "💬", label: "Ask", text: "How many calories can I still eat today?" }
+          ]
+        : quickPrompts,
+    [settings.language]
+  );
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const lastImageAnalysisRef = useRef(0);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const todayEntries = useMemo(() => entries.filter((entry) => isToday(entry.createdAt)), [entries]);
   const todayTotal = useMemo(() => todayEntries.reduce((total, entry) => addTotals(total, entry.total), emptyTotal), [todayEntries]);
@@ -130,9 +209,23 @@ export function App() {
     Promise.all([getProfile(), getDiaryEntries()]).then(([storedProfile, storedEntries]) => {
       setProfile(storedProfile);
       setEntries(storedEntries);
+      setChatMessages(loadChatMessages());
       setIsReady(true);
     });
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.lang = settings.language;
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    window.localStorage.setItem(LANGUAGE_KEY, settings.language);
+    window.localStorage.setItem(NICKNAME_KEY, settings.nickname);
+  }, [settings]);
+
+  useEffect(() => {
+    window.localStorage.setItem(CHAT_KEY, JSON.stringify(chatMessages));
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chatMessages]);
 
   useEffect(() => {
     const onOnline = () => setIsOnline(true);
@@ -188,7 +281,7 @@ export function App() {
       setError("Опишите, что вы съели.");
       return;
     }
-    await runAnalysis("text", trimmed, () => analyzeText(trimmed));
+    await runAnalysis("text", trimmed, () => analyzeText(trimmed, buildAnalyzeContext(settings, profile, todayTotal)));
   };
 
   const sendChat = async () => {
@@ -210,19 +303,15 @@ export function App() {
       return;
     }
 
-    if (/[?？]/.test(trimmed) && !looksLikeFood(trimmed)) {
+    if (!settings.assistantEnabled && /[?？]/.test(trimmed) && !looksLikeFood(trimmed)) {
       setChatMessages((current) => [
         ...current,
-        { id: crypto.randomUUID(), role: "assistant", text: "Для точного КБЖУ напишите продукты и порции. В общем случае держите белок в каждом приёме пищи и не режьте калории слишком резко." }
+        { id: crypto.randomUUID(), role: "assistant", text: t("assistantDisabledAdvice") }
       ]);
       return;
     }
 
-    await runAnalysis("text", trimmed, () => analyzeText(trimmed));
-    setChatMessages((current) => [
-      ...current,
-      { id: crypto.randomUUID(), role: "assistant", text: "Я оценил КБЖУ. Проверьте карточки ниже и сохраните в дневник, если всё похоже на правду." }
-    ]);
+    await runAnalysis("text", trimmed, () => analyzeText(trimmed, buildAnalyzeContext(settings, profile, todayTotal)));
   };
 
   const selectImage = (file: File) => {
@@ -245,7 +334,7 @@ export function App() {
 
     lastImageAnalysisRef.current = Date.now();
     const base64 = await compressImageToBase64(selectedImage);
-    await runAnalysis("image", selectedImage.name, () => analyzeImage(base64));
+    await runAnalysis("image", selectedImage.name, () => analyzeImage(base64, buildAnalyzeContext(settings, profile, todayTotal)));
   };
 
   const runAnalysis = async (type: AnalyzeInputType, source: string, loader: () => Promise<AnalyzeResponse>) => {
@@ -260,9 +349,17 @@ export function App() {
 
     try {
       const result = await loader();
-      setDraft(result);
+      setDraft(result.items.length > 0 ? result : null);
       setDraftSource(source);
       setDraftType(type);
+      if (result.assistantMessage) {
+        setChatMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", text: result.assistantMessage || "" }]);
+      } else if (type === "text") {
+        setChatMessages((current) => [
+          ...current,
+          { id: crypto.randomUUID(), role: "assistant", text: result.items.length > 0 ? "Я оценил КБЖУ. Проверьте карточки ниже и сохраните в дневник, если всё похоже на правду." : "Готов помочь с питанием, тренировками и режимом. Задайте вопрос чуть подробнее." }
+        ]);
+      }
     } catch (nextError) {
       setError(errorText(nextError));
       if (nextError instanceof Error && nextError.message === "parse_failed") {
@@ -308,6 +405,41 @@ export function App() {
     await clearDiary();
     setEntries([]);
     setToast("Дневник очищен.");
+  };
+
+  const clearChat = () => {
+    const nextMessages = [{ id: "hello", role: "assistant" as const, text: "История очищена. Готов снова помочь с питанием и тренировками." }];
+    setChatMessages(nextMessages);
+    setDraft(null);
+    setToast("История ИИ очищена.");
+  };
+
+  const exportDiary = () => {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), entries }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "larpfatless-diary.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importDiary = async (file: File) => {
+    const text = await file.text();
+    const data = JSON.parse(text) as { entries?: DiaryEntry[] } | DiaryEntry[];
+    const importedEntries = Array.isArray(data) ? data : data.entries ?? [];
+    const validEntries = importedEntries.filter((entry) => entry.id && entry.createdAt && Array.isArray(entry.items));
+
+    for (const entry of validEntries) {
+      await saveDiaryEntry(entry);
+    }
+
+    setEntries((current) => [...validEntries, ...current].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    setToast(`Импортировано записей: ${validEntries.length}.`);
+  };
+
+  const updateSettings = (patch: Partial<AppSettings>) => {
+    setSettings((current) => ({ ...current, ...patch, language: normalizeLanguage(patch.language ?? current.language) }));
   };
 
   const updateDraftItem = (index: number, item: NutritionItem) => {
@@ -399,14 +531,17 @@ export function App() {
 
   return (
     <main className="app-shell">
-      {!isOnline && <div className="offline-banner">Нет подключения. Дневник и профиль доступны, анализ временно отключён.</div>}
+      {!isOnline && <div className="offline-banner">{t("offline")}</div>}
       {toast && <div className="toast">{toast}</div>}
       {calorieStreak >= 3 && <div className="streak-banner">Вы уже {calorieStreak} дня держитесь в дневной норме. Хорошая серия.</div>}
 
       <MainMenuHeader
         profile={profile}
         today={todayTotal}
+        title={titleText}
+        dailyLabel={`${t("kcal")} ${t("today").toLowerCase()}`}
         onOpenProfile={() => setScreen("profile")}
+        onOpenSettings={() => setScreen("settings")}
         onAvatarLongPress={triggerAvatarEasterEgg}
         onInstall={installApp}
         canInstall={Boolean(installPrompt)}
@@ -414,20 +549,20 @@ export function App() {
       />
 
       <nav className="main-tabs" aria-label="Разделы">
-        <button className={screen === "home" ? "is-active" : ""} onClick={() => setScreen("home")} type="button">Меню</button>
-        <button className={screen === "chat" ? "is-active" : ""} onClick={() => setScreen("chat")} type="button">ИИ</button>
-        <button className={screen === "diary" ? "is-active" : ""} onClick={() => setScreen("diary")} type="button">Дневник</button>
-        <button className={screen === "profile" ? "is-active" : ""} onClick={() => setScreen("profile")} type="button">Профиль</button>
+        <button className={screen === "home" ? "is-active" : ""} onClick={() => setScreen("home")} type="button">{t("menu")}</button>
+        <button className={screen === "chat" ? "is-active" : ""} onClick={() => setScreen("chat")} type="button">{t("ai")}</button>
+        <button className={screen === "diary" ? "is-active" : ""} onClick={() => setScreen("diary")} type="button">{t("diary")}</button>
+        <button className={screen === "ai-calories" ? "is-active" : ""} onClick={() => setScreen("ai-calories")} type="button">{t("photo")}</button>
       </nav>
 
       {screen === "home" && (
         <section className="screen">
-          <AnimatedProgressRing value={todayTotal.calories} target={profile.dailyCalories} />
+          <HomeDashboard profile={profile} today={todayTotal} entries={todayEntries} t={t} />
           <div className="menu-grid">
-            <MenuCard icon={<UserRound size={24} />} title="Профиль" text="Данные, цель и пересчёт нормы" onClick={() => setScreen("profile")} />
-            <MenuCard icon={<Bot size={24} />} title="ИИ-чат" text="Текст, голос и быстрый подсчёт еды" onClick={() => setScreen("chat")} />
-            <MenuCard icon={<FileText size={24} />} title="Дневник" text="Записи за сегодня и неделя" onClick={() => setScreen("diary")} />
-            <MenuCard icon={<Camera size={24} />} title="AI Calories" text="Калории по фото блюда" onClick={() => setScreen("ai-calories")} />
+            <MenuCard icon={<Bot size={24} />} title={t("aiChat")} text={t("aiChatText")} onClick={() => setScreen("chat")} />
+            <MenuCard icon={<FileText size={24} />} title={t("diary")} text={t("diaryText")} onClick={() => setScreen("diary")} />
+            <MenuCard icon={<Camera size={24} />} title="AI Calories" text={t("aiCaloriesText")} onClick={() => setScreen("ai-calories")} />
+            <MenuCard icon={<Settings size={24} />} title={t("settings")} text={t("settingsText")} onClick={() => setScreen("settings")} />
           </div>
           {installPrompt && (
             <button className="install-strip" type="button" onClick={installApp}>
@@ -440,24 +575,35 @@ export function App() {
 
       {screen === "chat" && (
         <section className="screen">
-          <ScreenBack title="ИИ-чат" subtitle="Ассистент по питанию" onBack={() => setScreen("home")} />
-          <CustomSegmentedControl options={inputOptions} value={inputMode} onChange={setInputMode} />
+          <ScreenBack title={t("aiChat")} subtitle={t("fitnessAssistant")} onBack={() => setScreen("home")} />
+          <CustomSegmentedControl options={localizedInputOptions} value={inputMode} onChange={setInputMode} />
 
           <div className="chat-log" aria-live="polite">
             {chatMessages.map((message) => (
               <article className={`chat-message chat-message--${message.role}`} key={message.id}>
+                <span className="chat-message__avatar">{message.role === "assistant" ? <Sparkles size={15} /> : <UserRound size={15} />}</span>
                 {message.text}
               </article>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="quick-prompts" aria-label="Quick prompts">
+            {localizedQuickPrompts.map((prompt) => (
+              <button key={prompt.label} type="button" onClick={() => setFoodText(prompt.text)}>
+                <span>{prompt.icon}</span>
+                {prompt.label}
+              </button>
             ))}
           </div>
 
           {inputMode === "text" ? (
             <div className="panel">
-              <label className="field-label" htmlFor="foodText">Сообщение</label>
+              <label className="field-label" htmlFor="foodText">{t("message")}</label>
               <textarea id="foodText" value={foodText} onChange={(event) => setFoodText(event.target.value)} placeholder="Например: гречка 200 г и куриная грудка 150 г" />
               <GradientButton onClick={sendChat} disabled={isLoading || !isOnline} loading={isLoading}>
                 <Send size={18} />
-                Отправить
+                {t("send")}
               </GradientButton>
             </div>
           ) : (
@@ -465,73 +611,73 @@ export function App() {
               <WaveformView active={isListening} analyser={analyser} />
               <GradientButton onClick={startVoice} disabled={isLoading || !isOnline || isListening} loading={isListening}>
                 <Mic size={18} />
-                Записать голос
+                {t("recordVoice")}
               </GradientButton>
               {!voiceSupported && <p className="hint">Браузер не поддерживает Web Speech API. Текстовый ввод остаётся доступен.</p>}
             </div>
           )}
 
-          <ErrorBlock error={error} onRetry={sendChat} disabled={isLoading || !isOnline} />
-          <DraftResult draft={draft} lowConfidence={lowConfidence} onChange={updateDraftItem} onDelete={deleteDraftItem} onSave={saveDraft} />
+          <ErrorBlock error={error} onRetry={sendChat} disabled={isLoading || !isOnline} t={t} />
+          <DraftResult draft={draft} lowConfidence={lowConfidence} onChange={updateDraftItem} onDelete={deleteDraftItem} onSave={saveDraft} t={t} />
         </section>
       )}
 
       {screen === "ai-calories" && (
         <section className="screen">
-          <ScreenBack title="AI Calories" subtitle="Фотоанализ еды" onBack={() => setScreen("home")} />
+          <ScreenBack title="AI Calories" subtitle={t("aiCaloriesText")} onBack={() => setScreen("home")} />
           <div className="panel file-panel">
             {imagePreview ? (
               <img className="photo-preview" src={imagePreview} alt="Превью блюда" />
             ) : (
               <ImagePlus size={46} />
             )}
-            <strong>{selectedImage ? selectedImage.name : "Фото еды"}</strong>
+            <strong>{selectedImage ? selectedImage.name : t("foodPhoto")}</strong>
             <p>Снимите блюдо на телефон или выберите файл из галереи. Перед отправкой фото останется только в этом сеансе.</p>
             <label className="file-button">
               <input accept="image/*" capture="environment" type="file" onChange={(event) => event.target.files?.[0] && selectImage(event.target.files[0])} />
-              Выбрать фото
+              {t("choosePhoto")}
             </label>
             <GradientButton onClick={analyzeSelectedImage} disabled={isLoading || !isOnline || !selectedImage} loading={isLoading}>
               <Camera size={18} />
-              Анализировать
+              {t("analyze")}
             </GradientButton>
           </div>
 
-          <ErrorBlock error={error} onRetry={analyzeSelectedImage} disabled={isLoading || !isOnline || !selectedImage} />
-          <DraftResult draft={draft} lowConfidence={lowConfidence} onChange={updateDraftItem} onDelete={deleteDraftItem} onSave={saveDraft} showMedicalWarning />
+          <ErrorBlock error={error} onRetry={analyzeSelectedImage} disabled={isLoading || !isOnline || !selectedImage} t={t} />
+          <DraftResult draft={draft} lowConfidence={lowConfidence} onChange={updateDraftItem} onDelete={deleteDraftItem} onSave={saveDraft} showMedicalWarning t={t} />
         </section>
       )}
 
       {screen === "diary" && (
         <section className="screen">
-          <ScreenBack title="Дневник питания" subtitle="Сегодня и неделя" onBack={() => setScreen("home")} />
+          <ScreenBack title={t("diary")} subtitle={t("diaryText")} onBack={() => setScreen("home")} />
           <div className="summary-grid">
-            <SummaryTile label="Сегодня" value={`${Math.round(todayTotal.calories)} ккал`} />
-            <SummaryTile label="Неделя" value={`${Math.round(weekTotal.calories)} ккал`} />
-            <SummaryTile label="Белки" value={`${Math.round(todayTotal.protein_g)} / ${profile.proteinGoal} г`} />
-            <SummaryTile label="Углеводы" value={`${Math.round(todayTotal.carbs_g)} / ${profile.carbsGoal} г`} />
+            <SummaryTile label={t("today")} value={`${Math.round(todayTotal.calories)} ${t("kcal")}`} />
+            <SummaryTile label={settings.language === "en" ? "Week" : "Неделя"} value={`${Math.round(weekTotal.calories)} ${t("kcal")}`} />
+            <SummaryTile label={t("protein")} value={`${Math.round(todayTotal.protein_g)} / ${profile.proteinGoal} ${t("grams")}`} />
+            <SummaryTile label={t("carbs")} value={`${Math.round(todayTotal.carbs_g)} / ${profile.carbsGoal} ${t("grams")}`} />
           </div>
           <button className="icon-text-button danger diary-clear" onClick={resetDiary} type="button" disabled={entries.length === 0}>
             <Trash2 size={16} />
-            Очистить дневник
+            {t("clearDiary")}
           </button>
 
           {todayEntries.length === 0 ? (
             <div className="empty-state">
               <FileText size={38} />
-              <p>Сегодня пока нет записей. Добавьте еду через ИИ-чат или AI Calories.</p>
+              <p>{t("noFoodToday")}</p>
             </div>
           ) : (
             todayEntries.map((entry) => (
               <article className="diary-entry" key={entry.id}>
                 <div className="diary-entry__head">
                   <div>
-                    <strong>{Math.round(entry.total.calories)} ккал</strong>
+                    <strong>{Math.round(entry.total.calories)} {t("kcal")}</strong>
                     <span>{new Date(entry.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                   <button className="icon-text-button danger" onClick={() => deleteEntry(entry.id)} type="button">
                     <Trash2 size={16} />
-                    Удалить
+                    {t("delete")}
                   </button>
                 </div>
                 {entry.items.map((item, index) => (
@@ -545,8 +691,23 @@ export function App() {
 
       {screen === "profile" && (
         <section className="screen">
-          <ScreenBack title="Профиль" subtitle="Цель и нормы" onBack={() => setScreen("home")} />
-          <ProfileForm initial={profile} onSubmit={createOrUpdateProfile} />
+          <ScreenBack title={t("profile")} subtitle={t("recalculateGoal")} onBack={() => setScreen("home")} />
+          <ProfileForm initial={profile} onSubmit={createOrUpdateProfile} t={t} />
+        </section>
+      )}
+
+      {screen === "settings" && (
+        <section className="screen">
+          <ScreenBack title={t("settings")} subtitle={t("app")} onBack={() => setScreen("home")} />
+          <SettingsPanel
+            settings={settings}
+            onChange={updateSettings}
+            t={t}
+            onClearDiary={resetDiary}
+            onClearChat={clearChat}
+            onExportDiary={exportDiary}
+            onImportDiary={importDiary}
+          />
         </section>
       )}
     </main>
@@ -566,7 +727,248 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
   );
 }
 
-function ProfileForm({ initial, onSubmit, submitLabel = "Сохранить профиль" }: { initial: ProfileFormValues; onSubmit: (values: ProfileFormValues) => void; submitLabel?: string }) {
+function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; today: NutritionTotal; entries: DiaryEntry[]; t: TFunction }) {
+  const caloriesLeft = Math.max(0, profile.dailyCalories - today.calories);
+  const recentEntries = entries.slice(0, 3);
+
+  return (
+    <div className="dashboard">
+      <section className="dashboard-hero">
+        <div>
+          <span>{t("eaten")}</span>
+          <strong>{Math.round(today.calories)} {t("kcal")}</strong>
+        </div>
+        <div>
+          <span>{t("remaining")}</span>
+          <strong>{Math.round(caloriesLeft)} {t("kcal")}</strong>
+        </div>
+        <div>
+          <span>{t("dailyGoal")}</span>
+          <strong>{profile.dailyCalories} {t("kcal")}</strong>
+        </div>
+      </section>
+
+      <section className="macro-panel">
+        <MacroProgress label={t("protein")} icon="🥩" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
+        <MacroProgress label={t("fat")} icon="🧈" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
+        <MacroProgress label={t("carbs")} icon="🍚" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
+      </section>
+
+      <section className="today-card">
+        <div className="section-heading compact">
+          <div>
+            <p>🔥 {t("today")}</p>
+            <h2>{t("stats")}</h2>
+          </div>
+        </div>
+        <div className="summary-grid">
+          <SummaryTile label={t("calories")} value={`${Math.round(today.calories)} ${t("kcal")}`} />
+          <SummaryTile label={t("protein")} value={`${Math.round(today.protein_g)} ${t("grams")}`} />
+          <SummaryTile label={t("fat")} value={`${Math.round(today.fat_g)} ${t("grams")}`} />
+          <SummaryTile label={t("carbs")} value={`${Math.round(today.carbs_g)} ${t("grams")}`} />
+        </div>
+      </section>
+
+      <section className="recent-card">
+        <div className="section-heading compact">
+          <div>
+            <p>{t("recent")}</p>
+            <h2>{t("meals")}</h2>
+          </div>
+          <Utensils size={22} />
+        </div>
+        {recentEntries.length === 0 ? (
+          <div className="empty-state inline">
+            <p>{t("noFoodToday")}</p>
+          </div>
+        ) : (
+          <div className="recent-list">
+            {recentEntries.map((entry) => (
+              <article className="recent-meal" key={entry.id}>
+                <div>
+                  <strong>{entry.items[0]?.name || t("meals")}</strong>
+                  <span>{new Date(entry.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+                <b>{Math.round(entry.total.calories)} {t("kcal")}</b>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MacroProgress({ label, icon, value, target, unit }: { label: string; icon: string; value: number; target: number; unit: string }) {
+  const percent = Math.min(100, Math.round((value / Math.max(1, target)) * 100));
+
+  return (
+    <div className="macro-progress">
+      <div className="macro-progress__top">
+        <span>{icon} {label}</span>
+        <strong>{Math.round(value)} / {target} {unit}</strong>
+      </div>
+      <div className="macro-progress__track">
+        <div style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SettingsPanel({
+  settings,
+  onChange,
+  t,
+  onClearDiary,
+  onClearChat,
+  onExportDiary,
+  onImportDiary
+}: {
+  settings: AppSettings;
+  onChange: (patch: Partial<AppSettings>) => void;
+  t: TFunction;
+  onClearDiary: () => void;
+  onClearChat: () => void;
+  onExportDiary: () => void;
+  onImportDiary: (file: File) => void;
+}) {
+  const [nicknameDraft, setNicknameDraft] = useState(settings.nickname);
+  const [nicknameError, setNicknameError] = useState("");
+
+  useEffect(() => {
+    setNicknameDraft(settings.nickname);
+  }, [settings.nickname]);
+
+  const saveNickname = () => {
+    const trimmed = nicknameDraft.trim();
+    if (nicknameDraft.length > 0 && trimmed.length === 0) {
+      setNicknameError(t("nicknameEmptyError"));
+      return;
+    }
+    setNicknameError("");
+    onChange({ nickname: trimmed.slice(0, 24) });
+  };
+
+  return (
+    <div className="settings-stack">
+      <section className="settings-card">
+        <h3>{t("theme")}</h3>
+        <label className="settings-field">
+          <span>{t("nickname")}</span>
+          <div className="nickname-row">
+            <input
+              value={nicknameDraft}
+              maxLength={24}
+              placeholder={t("nicknamePlaceholder")}
+              onChange={(event) => {
+                setNicknameDraft(event.target.value.slice(0, 24));
+                setNicknameError("");
+              }}
+            />
+            <button type="button" onClick={saveNickname}>{t("save")}</button>
+          </div>
+          <small className={nicknameError ? "field-error" : "field-hint"}>{nicknameError || t("nicknameHelp")}</small>
+        </label>
+        <div className="theme-switcher">
+          <button className={settings.theme === "dark" ? "is-active" : ""} type="button" onClick={() => onChange({ theme: "dark" })}>
+            <Moon size={18} />
+            {t("darkTheme")}
+          </button>
+          <button className={settings.theme === "light" ? "is-active" : ""} type="button" onClick={() => onChange({ theme: "light" })}>
+            <Sun size={18} />
+            {t("lightTheme")}
+          </button>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h3>{t("fitnessAssistant")}</h3>
+        <SettingToggle
+          icon={<Bot size={20} />}
+          title={t("enableFitnessAssistant")}
+          text={settings.assistantEnabled ? t("assistantOn") : t("assistantOff")}
+          checked={settings.assistantEnabled}
+          onChange={(checked) => onChange({ assistantEnabled: checked })}
+        />
+      </section>
+
+      <section className="settings-card">
+        <h3>{t("app")}</h3>
+        <label className="settings-field">
+          <span>{t("language")}</span>
+          <div className="theme-switcher language-switcher">
+            <button className={settings.language === "ru" ? "is-active" : ""} type="button" onClick={() => onChange({ language: "ru" })}>
+              {t("russian")}
+            </button>
+            <button className={settings.language === "en" ? "is-active" : ""} type="button" onClick={() => onChange({ language: "en" })}>
+              {t("english")}
+            </button>
+          </div>
+        </label>
+        <label className="settings-field">
+          <span>{t("units")}</span>
+          <select value={settings.units} onChange={(event) => onChange({ units: event.target.value as AppSettings["units"] })}>
+            <option value="kg">{t("kilograms")}</option>
+            <option value="lb">{t("pounds")}</option>
+          </select>
+        </label>
+        <SettingToggle
+          icon={<Bell size={20} />}
+          title={t("notifications")}
+          text={settings.language === "en" ? "Local setting for future reminders." : "Локальная настройка для будущих напоминаний."}
+          checked={settings.notifications}
+          onChange={(checked) => onChange({ notifications: checked })}
+        />
+      </section>
+
+      <section className="settings-card">
+        <h3>{t("data")}</h3>
+        <div className="settings-actions">
+          <button type="button" onClick={onClearDiary}>
+            <Trash2 size={18} />
+            {t("clearDiary")}
+          </button>
+          <button type="button" onClick={onClearChat}>
+            <Bot size={18} />
+            {t("clearAiHistory")}
+          </button>
+          <button type="button" onClick={onExportDiary}>
+            <DownloadCloud size={18} />
+            {t("exportDiary")}
+          </button>
+          <label className="settings-import">
+            <Upload size={18} />
+            {t("importDiary")}
+            <input type="file" accept="application/json" onChange={(event) => event.target.files?.[0] && onImportDiary(event.target.files[0])} />
+          </label>
+        </div>
+      </section>
+
+      <section className="settings-card">
+        <h3>{t("aboutApp")}</h3>
+        <div className="about-list">
+          <span>{t("privacy")}</span>
+          <span>{t("version")}</span>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SettingToggle({ icon, title, text, checked, onChange }: { icon: ReactNode; title: string; text: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="setting-toggle">
+      <span className="setting-toggle__icon">{icon}</span>
+      <span>
+        <strong>{title}</strong>
+        <small>{text}</small>
+      </span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    </label>
+  );
+}
+
+function ProfileForm({ initial, onSubmit, t, submitLabel }: { initial: ProfileFormValues; onSubmit: (values: ProfileFormValues) => void; t?: TFunction; submitLabel?: string }) {
   const [values, setValues] = useState<ProfileFormValues>({
     name: initial.name,
     gender: initial.gender,
@@ -579,6 +981,7 @@ function ProfileForm({ initial, onSubmit, submitLabel = "Сохранить пр
   });
   const targets = useMemo(() => calculateTargets(values), [values]);
   const canSubmit = values.name.trim().length >= 2 && values.age > 0 && values.heightCm > 0 && values.weightKg > 0;
+  const isEn = t?.("menu") === "Menu";
 
   const update = <Key extends keyof ProfileFormValues>(key: Key, value: ProfileFormValues[Key]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -589,46 +992,46 @@ function ProfileForm({ initial, onSubmit, submitLabel = "Сохранить пр
       event.preventDefault();
       if (canSubmit) onSubmit(values);
     }}>
-      <ProfileField label="Имя" value={values.name} onChange={(value) => update("name", value)} />
+      <ProfileField label={isEn ? "Name" : "Имя"} value={values.name} onChange={(value) => update("name", value)} />
       <div className="form-grid">
-        <ProfileField label="Возраст" value={String(values.age)} inputMode="numeric" onChange={(value) => update("age", numeric(value))} />
-        <ProfileField label="Рост, см" value={String(values.heightCm)} inputMode="decimal" onChange={(value) => update("heightCm", numeric(value))} />
-        <ProfileField label="Вес, кг" value={String(values.weightKg)} inputMode="decimal" onChange={(value) => update("weightKg", numeric(value))} />
-        <ProfileField label="Темп, кг/нед." value={String(values.weeklyWeightChangeKg)} inputMode="decimal" onChange={(value) => update("weeklyWeightChangeKg", numeric(value))} />
+        <ProfileField label={t?.("age") ?? "Возраст"} value={String(values.age)} inputMode="numeric" onChange={(value) => update("age", numeric(value))} />
+        <ProfileField label={`${t?.("height") ?? "Рост"}, см`} value={String(values.heightCm)} inputMode="decimal" onChange={(value) => update("heightCm", numeric(value))} />
+        <ProfileField label={`${t?.("weight") ?? "Вес"}, кг`} value={String(values.weightKg)} inputMode="decimal" onChange={(value) => update("weightKg", numeric(value))} />
+        <ProfileField label={isEn ? "Tempo, kg/week" : "Темп, кг/нед."} value={String(values.weeklyWeightChangeKg)} inputMode="decimal" onChange={(value) => update("weeklyWeightChangeKg", numeric(value))} />
       </div>
 
       <label className="profile-field">
-        <span>Пол</span>
+        <span>{t?.("gender") ?? "Пол"}</span>
         <select value={values.gender} onChange={(event) => update("gender", event.target.value as Gender)}>
-          <option value="male">Мужской</option>
-          <option value="female">Женский</option>
+          <option value="male">{isEn ? "Male" : "Мужской"}</option>
+          <option value="female">{isEn ? "Female" : "Женский"}</option>
         </select>
       </label>
 
       <label className="profile-field">
-        <span>Активность</span>
+        <span>{t?.("activity") ?? "Активность"}</span>
         <select value={values.activityLevel} onChange={(event) => update("activityLevel", event.target.value as ActivityLevel)}>
-          {Object.entries(activityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          {Object.entries(activityLabels).map(([value, label]) => <option key={value} value={value}>{isEn ? activityLabelEn[value as ActivityLevel] : label}</option>)}
         </select>
       </label>
 
       <label className="profile-field">
-        <span>Цель</span>
+        <span>{t?.("goal") ?? "Цель"}</span>
         <select value={values.goal} onChange={(event) => update("goal", event.target.value as WeightGoal)}>
-          {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          {Object.entries(goalLabels).map(([value, label]) => <option key={value} value={value}>{isEn ? goalLabelEn[value as WeightGoal] : label}</option>)}
         </select>
       </label>
 
       <div className="targets-preview">
-        <SummaryTile label="Норма" value={`${targets.dailyCalories} ккал`} />
-        <SummaryTile label="Белки" value={`${targets.proteinGoal} г`} />
-        <SummaryTile label="Жиры" value={`${targets.fatGoal} г`} />
-        <SummaryTile label="Углеводы" value={`${targets.carbsGoal} г`} />
+        <SummaryTile label={t?.("goal") ?? "Норма"} value={`${targets.dailyCalories} ${t?.("kcal") ?? "ккал"}`} />
+        <SummaryTile label={t?.("protein") ?? "Белки"} value={`${targets.proteinGoal} ${t?.("grams") ?? "г"}`} />
+        <SummaryTile label={t?.("fat") ?? "Жиры"} value={`${targets.fatGoal} ${t?.("grams") ?? "г"}`} />
+        <SummaryTile label={t?.("carbs") ?? "Углеводы"} value={`${targets.carbsGoal} ${t?.("grams") ?? "г"}`} />
       </div>
 
       <GradientButton disabled={!canSubmit}>
         <Check size={18} />
-        {submitLabel}
+        {submitLabel ?? t?.("recalculateGoal") ?? "Сохранить профиль"}
       </GradientButton>
     </form>
   );
@@ -676,16 +1079,16 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ErrorBlock({ error, onRetry, disabled }: { error: string; onRetry: () => void; disabled?: boolean }) {
+function ErrorBlock({ error, onRetry, disabled, t }: { error: string; onRetry: () => void; disabled?: boolean; t: TFunction }) {
   if (!error) return null;
 
   return (
     <div className="error-card">
-      <strong>Не получилось</strong>
+      <strong>{t("couldNot")}</strong>
       <p>{error}</p>
       <button type="button" onClick={onRetry} disabled={disabled}>
         <RotateCcw size={16} />
-        Повторить
+        {t("retry")}
       </button>
     </div>
   );
@@ -697,6 +1100,7 @@ function DraftResult({
   onChange,
   onDelete,
   onSave,
+  t,
   showMedicalWarning = false
 }: {
   draft: AnalyzeResponse | null;
@@ -704,6 +1108,7 @@ function DraftResult({
   onChange: (index: number, item: NutritionItem) => void;
   onDelete: (index: number) => void;
   onSave: () => void;
+  t: TFunction;
   showMedicalWarning?: boolean;
 }) {
   if (!draft) return null;
@@ -712,10 +1117,10 @@ function DraftResult({
     <section className="result-panel">
       <div className="section-heading">
         <div>
-          <p>Результат</p>
-          <h2>{Math.round(draft.total.calories)} ккал</h2>
+          <p>{t("result")}</p>
+          <h2>{Math.round(draft.total.calories)} {t("kcal")}</h2>
         </div>
-        {lowConfidence && <span className="confidence-badge">проверьте значения</span>}
+        {lowConfidence && <span className="confidence-badge">{t("checkValues")}</span>}
       </div>
       {draft.items.map((item, index) => (
         <FoodItemCard key={`${item.name}-${index}`} item={item} index={index} editable onChange={(nextItem) => onChange(index, nextItem)} onDelete={() => onDelete(index)} />
@@ -723,12 +1128,12 @@ function DraftResult({
       {showMedicalWarning && (
         <p className="medical-warning">
           <AlertTriangle size={16} />
-          Расчёт примерный и не является медицинской рекомендацией
+          {t("medicalWarning")}
         </p>
       )}
       <GradientButton onClick={onSave}>
         <Save size={18} />
-        Сохранить в дневник
+        {t("saveToDiary")}
       </GradientButton>
     </section>
   );
@@ -764,7 +1169,8 @@ function createManualItem(source: string): NutritionItem {
 function normalizeResponse(response: AnalyzeResponse): AnalyzeResponse {
   return {
     items: response.items,
-    total: calculateTotal(response.items)
+    total: calculateTotal(response.items),
+    assistantMessage: response.assistantMessage
   };
 }
 
@@ -829,7 +1235,62 @@ function countCalorieStreak(entries: DiaryEntry[], dailyGoal: number) {
 }
 
 function looksLikeFood(text: string) {
-  return /(г|ккал|яйц|кур|рис|греч|творог|молок|сыр|мяс|рыб|хлеб|салат|суп|карто|кофе|банан|яблок|овсян)/i.test(text);
+  return /(рассчитай кбжу|посчитай кбжу|сколько кбжу|съел|съела|ел |ела |завтрак|обед|ужин|перекус|\d+\s?(г|гр|gram|grams|g)\b|яйц|кур|рис|греч|творог|молок|сыр|мяс|рыб|хлеб|салат|суп|карто|кофе|банан|яблок|овсян|ate|i had|food log|meal log|breakfast|lunch|dinner|chicken|rice|egg|oat|banana)/i.test(text);
+}
+
+function loadSettings(): AppSettings {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    const stored = raw ? JSON.parse(raw) : {};
+    const storedLanguage = window.localStorage.getItem(LANGUAGE_KEY);
+    const storedNickname = window.localStorage.getItem(NICKNAME_KEY);
+    const language = normalizeLanguage(storedLanguage ?? stored.language);
+    return {
+      ...defaultSettings,
+      ...stored,
+      language,
+      nickname: typeof storedNickname === "string" ? storedNickname.slice(0, 24) : stored.nickname ?? ""
+    };
+  } catch {
+    return defaultSettings;
+  }
+}
+
+function normalizeLanguage(value: unknown): AppLanguage {
+  return value === "en" || value === "english" ? "en" : "ru";
+}
+
+function loadChatMessages(): ChatMessage[] {
+  try {
+    const raw = window.localStorage.getItem(CHAT_KEY);
+    const parsed = raw ? (JSON.parse(raw) as ChatMessage[]) : null;
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: "hello", role: "assistant", text: "Я ваш ИИ фитнес-ассистент. Могу считать еду, помогать с тренировками, рационом, сушкой и восстановлением." }];
+  } catch {
+    return [{ id: "hello", role: "assistant", text: "Я ваш ИИ фитнес-ассистент. Могу считать еду, помогать с тренировками, рационом, сушкой и восстановлением." }];
+  }
+}
+
+function buildAnalyzeContext(settings: AppSettings, profile: UserProfile | null, today: NutritionTotal) {
+  return {
+    assistantEnabled: settings.assistantEnabled,
+    language: settings.language,
+    profile: profile
+      ? {
+          name: profile.name,
+          age: profile.age,
+          heightCm: profile.heightCm,
+          weightKg: profile.weightKg,
+          gender: profile.gender,
+          activityLevel: profile.activityLevel,
+          goal: profile.goal,
+          dailyCalories: profile.dailyCalories,
+          proteinGoal: profile.proteinGoal,
+          fatGoal: profile.fatGoal,
+          carbsGoal: profile.carbsGoal
+        }
+      : undefined,
+    today
+  };
 }
 
 declare global {
