@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
-import { getGlassStyles, type GlassCustomization } from "../../../lib/glass-utils";
+import { getGlassStyles, type GlassCustomization } from "./glass-utils";
 
 export type GlassButtonEffect = "none" | "glow" | "shimmer" | "ripple" | "lift" | "scale";
 export type GlassButtonVariant = "glass" | "solid" | "ghost";
