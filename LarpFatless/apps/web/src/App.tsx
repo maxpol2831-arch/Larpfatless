@@ -7,6 +7,7 @@ import {
   Camera,
   Check,
   ChevronLeft,
+  ChevronRight,
   Download,
   DownloadCloud,
   FileText,
@@ -35,6 +36,8 @@ import { GradientButton } from "./components/GradientButton";
 import { MainMenuHeader } from "./components/MainMenuHeader";
 import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
+import { AuroraText } from "./components/ui/AuroraText";
+import { RevealOnScroll } from "./components/ui/RevealOnScroll";
 import { authErrorText, handleAuthRedirect, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
 import {
@@ -63,8 +66,10 @@ import type {
 } from "./types/nutrition";
 import type { User } from "@supabase/supabase-js";
 import type { AppLanguage, TranslationKey } from "./i18n/translations";
-import "./theme/theme.css";
-import "./styles.css";
+import "./styles/theme.css";
+import "./styles/global.css";
+import "./styles/components.css";
+import "./styles/animations.css";
 
 type Screen = "home" | "chat" | "diary" | "profile" | "ai-calories" | "settings";
 type ProfileFormValues = Pick<UserProfile, "name" | "gender" | "age" | "heightCm" | "weightKg" | "activityLevel" | "goal" | "weeklyWeightChangeKg">;
@@ -714,10 +719,22 @@ export function App() {
       />
 
       <nav className="main-tabs" aria-label="Разделы">
-        <button className={screen === "home" ? "is-active" : ""} onClick={() => setScreen("home")} type="button">{t("menu")}</button>
-        <button className={screen === "chat" ? "is-active" : ""} onClick={() => setScreen("chat")} type="button">{t("ai")}</button>
-        <button className={screen === "diary" ? "is-active" : ""} onClick={() => setScreen("diary")} type="button">{t("diary")}</button>
-        <button className={screen === "ai-calories" ? "is-active" : ""} onClick={() => setScreen("ai-calories")} type="button">{t("photo")}</button>
+        <button className={screen === "home" ? "is-active" : ""} onClick={() => setScreen("home")} type="button">
+          <Flame size={18} />
+          <span>{t("menu")}</span>
+        </button>
+        <button className={screen === "chat" ? "is-active" : ""} onClick={() => setScreen("chat")} type="button">
+          <Bot size={18} />
+          <span>{t("ai")}</span>
+        </button>
+        <button className={screen === "diary" ? "is-active" : ""} onClick={() => setScreen("diary")} type="button">
+          <FileText size={18} />
+          <span>{t("diary")}</span>
+        </button>
+        <button className={screen === "ai-calories" ? "is-active" : ""} onClick={() => setScreen("ai-calories")} type="button">
+          <Camera size={18} />
+          <span>{t("photo")}</span>
+        </button>
       </nav>
       <div className="cloud-account-bar">
         <span>{authUser.email}</span>
@@ -897,7 +914,7 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
       <div className="brand-mark">
         <Flame size={26} />
       </div>
-      <h1>LarpFatless</h1>
+      <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
       <p>Сначала создадим профиль. Без него приложение не откроет меню, потому что нормы КБЖУ должны быть личными.</p>
       <ProfileForm initial={defaultForm} onSubmit={onSubmit} submitLabel="Создать профиль" />
     </section>
@@ -940,7 +957,7 @@ function AuthPanel({
       <div className="brand-mark">
         <Flame size={26} />
       </div>
-      <h1>LarpFatless</h1>
+      <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
 
       <div className="panel auth-panel">
         <div className="auth-mode">
@@ -1019,34 +1036,41 @@ function MigrationBanner({ busy, onMigrate, onDismiss }: { busy: boolean; onMigr
 function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; today: NutritionTotal; entries: DiaryEntry[]; t: TFunction }) {
   const caloriesLeft = Math.max(0, profile.dailyCalories - today.calories);
   const recentEntries = entries.slice(0, 3);
+  const isEn = t("menu") === "Menu";
+  const displayName = profile.name.trim() || "LarpFatless";
 
   return (
     <div className="dashboard">
-      <section className="dashboard-hero">
+      <RevealOnScroll as="section" className="dashboard-hero">
+        <div className="dashboard-hero__intro">
+          <span>LarpFatless cloud</span>
+          <h2><AuroraText speed={0.72}>{isEn ? `${displayName}, nutrition cockpit` : `${displayName}, центр питания`}</AuroraText></h2>
+          <p>{isEn ? "Live balance of calories, macros and today's meals." : "Живой баланс калорий, макроцелей и сегодняшних приёмов пищи."}</p>
+        </div>
         <div className="dashboard-hero__ring">
           <AnimatedProgressRing value={today.calories} target={profile.dailyCalories} />
         </div>
-        <div>
+        <div className="dashboard-stat">
           <span>{t("eaten")}</span>
           <strong>{Math.round(today.calories)} {t("kcal")}</strong>
         </div>
-        <div>
+        <div className="dashboard-stat">
           <span>{t("remaining")}</span>
           <strong>{Math.round(caloriesLeft)} {t("kcal")}</strong>
         </div>
-        <div>
+        <div className="dashboard-stat dashboard-stat--goal">
           <span>{t("dailyGoal")}</span>
           <strong>{profile.dailyCalories} {t("kcal")}</strong>
         </div>
-      </section>
+      </RevealOnScroll>
 
-      <section className="macro-panel">
+      <RevealOnScroll as="section" className="macro-panel" delay={60}>
         <MacroProgress label={t("protein")} icon="🥩" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
         <MacroProgress label={t("fat")} icon="🧈" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
         <MacroProgress label={t("carbs")} icon="🍚" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
-      </section>
+      </RevealOnScroll>
 
-      <section className="today-card">
+      <RevealOnScroll as="section" className="today-card" delay={100}>
         <div className="section-heading compact">
           <div>
             <p>🔥 {t("today")}</p>
@@ -1059,9 +1083,9 @@ function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; t
           <SummaryTile label={t("fat")} value={`${Math.round(today.fat_g)} ${t("grams")}`} />
           <SummaryTile label={t("carbs")} value={`${Math.round(today.carbs_g)} ${t("grams")}`} />
         </div>
-      </section>
+      </RevealOnScroll>
 
-      <section className="recent-card">
+      <RevealOnScroll as="section" className="recent-card" delay={140}>
         <div className="section-heading compact">
           <div>
             <p>{t("recent")}</p>
@@ -1076,17 +1100,17 @@ function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; t
         ) : (
           <div className="recent-list">
             {recentEntries.map((entry) => (
-              <article className="recent-meal" key={entry.id}>
+              <RevealOnScroll as="article" className="recent-meal" key={entry.id}>
                 <div>
                   <strong>{entry.items[0]?.name || t("meals")}</strong>
                   <span>{new Date(entry.createdAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
                 <b>{Math.round(entry.total.calories)} {t("kcal")}</b>
-              </article>
+              </RevealOnScroll>
             ))}
           </div>
         )}
-      </section>
+      </RevealOnScroll>
     </div>
   );
 }
@@ -1143,7 +1167,7 @@ function SettingsPanel({
 
   return (
     <div className="settings-stack">
-      <section className="settings-card">
+      <RevealOnScroll as="section" className="settings-card">
         <h3>{t("theme")}</h3>
         <label className="settings-field">
           <span>{t("nickname")}</span>
@@ -1171,9 +1195,9 @@ function SettingsPanel({
             {t("lightTheme")}
           </button>
         </div>
-      </section>
+      </RevealOnScroll>
 
-      <section className="settings-card">
+      <RevealOnScroll as="section" className="settings-card" delay={60}>
         <h3>{t("fitnessAssistant")}</h3>
         <SettingToggle
           icon={<Bot size={20} />}
@@ -1182,9 +1206,9 @@ function SettingsPanel({
           checked={settings.assistantEnabled}
           onChange={(checked) => onChange({ assistantEnabled: checked })}
         />
-      </section>
+      </RevealOnScroll>
 
-      <section className="settings-card">
+      <RevealOnScroll as="section" className="settings-card" delay={100}>
         <h3>{t("app")}</h3>
         <label className="settings-field">
           <span>{t("language")}</span>
@@ -1211,9 +1235,9 @@ function SettingsPanel({
           checked={settings.notifications}
           onChange={(checked) => onChange({ notifications: checked })}
         />
-      </section>
+      </RevealOnScroll>
 
-      <section className="settings-card">
+      <RevealOnScroll as="section" className="settings-card" delay={140}>
         <h3>{t("data")}</h3>
         <div className="settings-actions">
           <button type="button" onClick={onClearDiary}>
@@ -1234,15 +1258,15 @@ function SettingsPanel({
             <input type="file" accept="application/json" onChange={(event) => event.target.files?.[0] && onImportDiary(event.target.files[0])} />
           </label>
         </div>
-      </section>
+      </RevealOnScroll>
 
-      <section className="settings-card">
+      <RevealOnScroll as="section" className="settings-card" delay={180}>
         <h3>{t("aboutApp")}</h3>
         <div className="about-list">
           <span>{t("privacy")}</span>
           <span>{t("version")}</span>
         </div>
-      </section>
+      </RevealOnScroll>
     </div>
   );
 }
@@ -1340,11 +1364,14 @@ function ProfileField({ label, value, inputMode, onChange }: { label: string; va
 
 function MenuCard({ icon, title, text, onClick }: { icon: ReactNode; title: string; text: string; onClick: () => void }) {
   return (
-    <button className="menu-card" type="button" onClick={onClick}>
-      <span>{icon}</span>
-      <strong>{title}</strong>
-      <small>{text}</small>
-    </button>
+    <RevealOnScroll>
+      <button className="menu-card" type="button" onClick={onClick}>
+        <span className="menu-card__icon">{icon}</span>
+        <strong>{title}</strong>
+        <small>{text}</small>
+        <span className="menu-card__arrow"><ChevronRight size={18} /></span>
+      </button>
+    </RevealOnScroll>
   );
 }
 
