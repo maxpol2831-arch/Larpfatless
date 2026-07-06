@@ -40,6 +40,7 @@
   --z-nav: 40;
   --z-floating: 35;
   --z-toast: 60;
+  --z-overlay: 120;
 }
 
 :root[data-theme="light"] {
