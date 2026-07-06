@@ -16,8 +16,8 @@ body {
   min-height: 100%;
   margin: 0;
   background:
-    radial-gradient(circle at 50% -12%, rgba(255, 255, 255, 0.09), transparent 30%),
-    linear-gradient(180deg, #0a0a0a 0%, var(--bg-main) 42%, #000 100%);
+    radial-gradient(circle at 50% -12%, var(--page-glow), transparent 30%),
+    linear-gradient(180deg, var(--page-top) 0%, var(--bg-main) 42%, var(--page-bottom) 100%);
   color: var(--text-main);
   font-family: var(--font-main);
   -webkit-font-smoothing: antialiased;
@@ -32,8 +32,8 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    linear-gradient(var(--grid-line-a) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line-b) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.62), transparent 72%);
 }
