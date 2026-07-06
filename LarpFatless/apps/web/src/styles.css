@@ -629,6 +629,122 @@ select option {
   text-align: left;
 }
 
+.auth-screen {
+  min-height: 100dvh;
+  justify-content: center;
+  text-align: center;
+}
+
+.auth-screen > p {
+  color: var(--color-text-secondary);
+  margin: 0 auto var(--space-4);
+  max-width: 34rem;
+  line-height: 1.5;
+}
+
+.auth-panel {
+  gap: var(--space-4);
+  text-align: left;
+}
+
+.auth-mode {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-mode button,
+.cloud-account-bar button,
+.migration-actions button {
+  border: 0;
+  border-radius: var(--radius-control);
+  min-height: 42px;
+  padding: 0 var(--space-3);
+  color: var(--color-text);
+  background: transparent;
+  font-weight: 900;
+}
+
+.auth-mode button.is-active,
+.migration-actions button:first-child {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  box-shadow: 0 10px 28px var(--color-shadow);
+}
+
+.input-with-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0 var(--space-3);
+}
+
+.input-with-icon svg {
+  color: var(--color-accent-start);
+  flex: 0 0 auto;
+}
+
+.input-with-icon input {
+  border: 0;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.auth-inline-error,
+.auth-wide-error {
+  width: 100%;
+  box-shadow: none;
+}
+
+.cloud-account-bar,
+.migration-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-card);
+  padding: var(--space-3);
+}
+
+.cloud-account-bar span,
+.migration-banner p {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.cloud-account-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.migration-banner {
+  align-items: flex-start;
+}
+
+.migration-banner p {
+  margin: var(--space-1) 0 0;
+  line-height: 1.45;
+}
+
+.migration-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .chat-log {
   display: grid;
   gap: var(--space-2);

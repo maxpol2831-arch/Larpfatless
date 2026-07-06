@@ -12,6 +12,9 @@ import {
   FileText,
   Flame,
   ImagePlus,
+  Lock,
+  LogOut,
+  Mail,
   Mic,
   Moon,
   RotateCcw,
@@ -31,13 +34,25 @@ import { GradientButton } from "./components/GradientButton";
 import { MainMenuHeader } from "./components/MainMenuHeader";
 import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
+import { authErrorText, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
+import {
+  clearCloudMeals,
+  deleteCloudMeal,
+  loadCloudSnapshot,
+  migrateLocalDataToCloud,
+  saveCloudMeal,
+  saveCloudProfile,
+  saveCloudSettings
+} from "./services/cloudStorageService";
 import { compressImageToBase64 } from "./services/imageService";
-import { clearDiary, deleteDiaryEntry, getDiaryEntries, getProfile, saveDiaryEntry, saveProfile } from "./services/storageService";
+import { getDiaryEntries, getProfile } from "./services/storageService";
+import { isSupabaseConfigured } from "./lib/supabase";
 import type {
   ActivityLevel,
   AnalyzeInputType,
   AnalyzeResponse,
+  AppSettings,
   DiaryEntry,
   Gender,
   NutritionItem,
@@ -45,6 +60,7 @@ import type {
   UserProfile,
   WeightGoal
 } from "./types/nutrition";
+import type { User } from "@supabase/supabase-js";
 import type { AppLanguage, TranslationKey } from "./i18n/translations";
 import "./theme/theme.css";
 import "./styles.css";
@@ -52,14 +68,6 @@ import "./styles.css";
 type Screen = "home" | "chat" | "diary" | "profile" | "ai-calories" | "settings";
 type ProfileFormValues = Pick<UserProfile, "name" | "gender" | "age" | "heightCm" | "weightKg" | "activityLevel" | "goal" | "weeklyWeightChangeKg">;
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
-type AppSettings = {
-  theme: "dark" | "light";
-  assistantEnabled: boolean;
-  language: AppLanguage;
-  units: "kg" | "lb";
-  notifications: boolean;
-  nickname: string;
-};
 type TFunction = (key: TranslationKey) => string;
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -148,6 +156,17 @@ const quickPrompts = [
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [cloudLoading, setCloudLoading] = useState(false);
+  const [migrationAvailable, setMigrationAvailable] = useState(false);
+  const [migrationBusy, setMigrationBusy] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [isReady, setIsReady] = useState(false);
@@ -206,24 +225,58 @@ export function App() {
   const calorieStreak = useMemo(() => (profile ? countCalorieStreak(entries, profile.dailyCalories) : 0), [entries, profile]);
 
   useEffect(() => {
-    Promise.all([getProfile(), getDiaryEntries()]).then(([storedProfile, storedEntries]) => {
-      setProfile(storedProfile);
-      setEntries(storedEntries);
-      setChatMessages(loadChatMessages());
-      setIsReady(true);
+    return observeAuth((user) => {
+      setAuthUser(user);
+      setAuthReady(true);
     });
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = settings.theme;
-    document.documentElement.lang = settings.language;
-    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    window.localStorage.setItem(LANGUAGE_KEY, settings.language);
-    window.localStorage.setItem(NICKNAME_KEY, settings.nickname);
-  }, [settings]);
+    if (!authReady) return;
+
+    if (!authUser) {
+      setProfile(null);
+      setEntries([]);
+      setDraft(null);
+      setScreen("home");
+      setIsReady(true);
+      setCloudLoading(false);
+      return;
+    }
+
+    setCloudLoading(true);
+    setIsReady(false);
+    setAuthError("");
+
+    loadCloudSnapshot(authUser.id)
+      .then(async (snapshot) => {
+        setProfile(snapshot.profile);
+        setEntries(snapshot.entries);
+        setSettings(snapshot.settings ? { ...defaultSettings, ...snapshot.settings, language: normalizeLanguage(snapshot.settings.language) } : defaultSettings);
+        setChatMessages(defaultChatMessages());
+        setScreen("home");
+
+        const [localProfile, localEntries] = await Promise.all([getProfile(), getDiaryEntries()]);
+        setMigrationAvailable(Boolean(localProfile) || localEntries.length > 0);
+      })
+      .catch((error) => {
+        setAuthError(supabaseDataErrorText(error));
+      })
+      .finally(() => {
+        setCloudLoading(false);
+        setIsReady(true);
+      });
+  }, [authReady, authUser]);
 
   useEffect(() => {
-    window.localStorage.setItem(CHAT_KEY, JSON.stringify(chatMessages));
+    document.documentElement.dataset.theme = settings.theme;
+    document.documentElement.lang = settings.language;
+    if (authUser && isReady && !cloudLoading) {
+      saveCloudSettings(authUser.id, settings).catch((error) => setAuthError(supabaseDataErrorText(error)));
+    }
+  }, [settings, authUser, isReady, cloudLoading]);
+
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatMessages]);
 
@@ -259,7 +312,68 @@ export function App() {
     };
   }, [imagePreview]);
 
+  const submitAuth = async () => {
+    if (!authEmail.trim() || !authPassword.trim()) {
+      setAuthError("Введите email и пароль.");
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      if (authMode === "register") {
+        await registerWithEmail(authEmail.trim(), authPassword, authName);
+      } else {
+        await loginWithEmail(authEmail.trim(), authPassword);
+      }
+      setAuthPassword("");
+    } catch (error) {
+      setAuthError(authErrorText(error));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const signOutUser = async () => {
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await logout();
+      setAuthPassword("");
+    } catch (error) {
+      setAuthError(authErrorText(error));
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const migrateLocalData = async () => {
+    if (!authUser) return;
+    setMigrationBusy(true);
+    setAuthError("");
+    try {
+      const [localProfile, localEntries] = await Promise.all([getProfile(), getDiaryEntries()]);
+      await migrateLocalDataToCloud(authUser.id, {
+        profile: localProfile,
+        entries: localEntries,
+        settings
+      });
+      const snapshot = await loadCloudSnapshot(authUser.id);
+      setProfile(snapshot.profile);
+      setEntries(snapshot.entries);
+      if (snapshot.settings) setSettings({ ...defaultSettings, ...snapshot.settings, language: normalizeLanguage(snapshot.settings.language) });
+      setMigrationAvailable(false);
+      setToast("Локальные данные перенесены в Supabase.");
+    } catch (error) {
+      setAuthError(supabaseDataErrorText(error));
+    } finally {
+      setMigrationBusy(false);
+    }
+  };
+
   const createOrUpdateProfile = async (values: ProfileFormValues) => {
+    if (!authUser) return;
     const now = new Date().toISOString();
     const targets = calculateTargets(values);
     const nextProfile: UserProfile = {
@@ -269,7 +383,7 @@ export function App() {
       updatedAt: now
     };
 
-    await saveProfile(nextProfile);
+    await saveCloudProfile(authUser.id, nextProfile);
     setProfile(nextProfile);
     setScreen("home");
     setToast("Профиль сохранён, нормы пересчитаны.");
@@ -376,6 +490,7 @@ export function App() {
   };
 
   const saveDraft = async () => {
+    if (!authUser) return;
     if (!draft) return;
     const normalized = normalizeResponse(draft);
     const entry: DiaryEntry = {
@@ -386,7 +501,7 @@ export function App() {
       sourceText: draftSource
     };
 
-    await saveDiaryEntry(entry);
+    await saveCloudMeal(authUser.id, entry);
     setEntries((current) => [entry, ...current]);
     setDraft(null);
     setSelectedImage(null);
@@ -397,12 +512,14 @@ export function App() {
   };
 
   const deleteEntry = async (id: string) => {
-    await deleteDiaryEntry(id);
+    if (!authUser) return;
+    await deleteCloudMeal(authUser.id, id);
     setEntries((current) => current.filter((entry) => entry.id !== id));
   };
 
   const resetDiary = async () => {
-    await clearDiary();
+    if (!authUser) return;
+    await clearCloudMeals(authUser.id, entries);
     setEntries([]);
     setToast("Дневник очищен.");
   };
@@ -425,13 +542,14 @@ export function App() {
   };
 
   const importDiary = async (file: File) => {
+    if (!authUser) return;
     const text = await file.text();
     const data = JSON.parse(text) as { entries?: DiaryEntry[] } | DiaryEntry[];
     const importedEntries = Array.isArray(data) ? data : data.entries ?? [];
     const validEntries = importedEntries.filter((entry) => entry.id && entry.createdAt && Array.isArray(entry.items));
 
     for (const entry of validEntries) {
-      await saveDiaryEntry(entry);
+      await saveCloudMeal(authUser.id, entry);
     }
 
     setEntries((current) => [...validEntries, ...current].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
@@ -521,9 +639,34 @@ export function App() {
     );
   }
 
+  if (!authUser) {
+    return (
+      <main className="app-shell">
+        <AuthPanel
+          mode={authMode}
+          email={authEmail}
+          password={authPassword}
+          name={authName}
+          loading={authLoading}
+          error={authError}
+          supabaseConfigured={isSupabaseConfigured}
+          onModeChange={setAuthMode}
+          onEmailChange={setAuthEmail}
+          onPasswordChange={setAuthPassword}
+          onNameChange={setAuthName}
+          onSubmit={submitAuth}
+        />
+      </main>
+    );
+  }
+
   if (!profile) {
     return (
       <main className="app-shell">
+        {authError && <div className="error-card auth-wide-error"><strong>Supabase</strong><p>{authError}</p></div>}
+        {migrationAvailable && (
+          <MigrationBanner busy={migrationBusy} onMigrate={migrateLocalData} onDismiss={() => setMigrationAvailable(false)} />
+        )}
         <OnboardingForm onSubmit={createOrUpdateProfile} />
       </main>
     );
@@ -554,6 +697,18 @@ export function App() {
         <button className={screen === "diary" ? "is-active" : ""} onClick={() => setScreen("diary")} type="button">{t("diary")}</button>
         <button className={screen === "ai-calories" ? "is-active" : ""} onClick={() => setScreen("ai-calories")} type="button">{t("photo")}</button>
       </nav>
+      <div className="cloud-account-bar">
+        <span>{authUser.email}</span>
+        <button type="button" onClick={signOutUser} disabled={authLoading}>
+          <LogOut size={16} />
+          Выйти
+        </button>
+      </div>
+      {authError && <div className="error-card auth-wide-error"><strong>Supabase</strong><p>{authError}</p></div>}
+      {cloudLoading && <div className="toast">Загружаем данные Supabase...</div>}
+      {migrationAvailable && (
+        <MigrationBanner busy={migrationBusy} onMigrate={migrateLocalData} onDismiss={() => setMigrationAvailable(false)} />
+      )}
 
       {screen === "home" && (
         <section className="screen">
@@ -724,6 +879,110 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
       <p>Сначала создадим профиль. Без него приложение не откроет меню, потому что нормы КБЖУ должны быть личными.</p>
       <ProfileForm initial={defaultForm} onSubmit={onSubmit} submitLabel="Создать профиль" />
     </section>
+  );
+}
+
+function AuthPanel({
+  mode,
+  email,
+  password,
+  name,
+  loading,
+  error,
+  supabaseConfigured,
+  onModeChange,
+  onEmailChange,
+  onPasswordChange,
+  onNameChange,
+  onSubmit
+}: {
+  mode: "login" | "register";
+  email: string;
+  password: string;
+  name: string;
+  loading: boolean;
+  error: string;
+  supabaseConfigured: boolean;
+  onModeChange: (mode: "login" | "register") => void;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onNameChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  const isRegister = mode === "register";
+
+  return (
+    <section className="screen auth-screen">
+      <div className="brand-mark">
+        <Flame size={26} />
+      </div>
+      <h1>LarpFatless</h1>
+      <p>Войдите в аккаунт, чтобы профиль, дневник и настройки сохранялись в Supabase.</p>
+
+      <div className="panel auth-panel">
+        <div className="auth-mode">
+          <button className={!isRegister ? "is-active" : ""} type="button" onClick={() => onModeChange("login")}>Вход</button>
+          <button className={isRegister ? "is-active" : ""} type="button" onClick={() => onModeChange("register")}>Регистрация</button>
+        </div>
+
+        {isRegister && (
+          <label className="profile-field">
+            <span>Имя</span>
+            <input value={name} onChange={(event) => onNameChange(event.target.value)} placeholder="Максим" />
+          </label>
+        )}
+
+        <label className="profile-field">
+          <span>Email</span>
+          <div className="input-with-icon">
+            <Mail size={17} />
+            <input value={email} inputMode="email" autoComplete="email" onChange={(event) => onEmailChange(event.target.value)} placeholder="you@email.com" />
+          </div>
+        </label>
+
+        <label className="profile-field">
+          <span>Пароль</span>
+          <div className="input-with-icon">
+            <Lock size={17} />
+            <input value={password} type="password" autoComplete={isRegister ? "new-password" : "current-password"} onChange={(event) => onPasswordChange(event.target.value)} placeholder="Минимум 6 символов" />
+          </div>
+        </label>
+
+        {!supabaseConfigured && (
+          <div className="error-card auth-inline-error">
+            <strong>Supabase не настроен</strong>
+            <p>Добавьте VITE_SUPABASE_URL и VITE_SUPABASE_PUBLISHABLE_KEY на Vercel и в локальный `.env`.</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="error-card auth-inline-error">
+            <strong>Не получилось</strong>
+            <p>{error}</p>
+          </div>
+        )}
+
+        <GradientButton onClick={onSubmit} disabled={loading || !supabaseConfigured} loading={loading}>
+          <UserRound size={18} />
+          {isRegister ? "Создать аккаунт" : "Войти"}
+        </GradientButton>
+      </div>
+    </section>
+  );
+}
+
+function MigrationBanner({ busy, onMigrate, onDismiss }: { busy: boolean; onMigrate: () => void; onDismiss: () => void }) {
+  return (
+    <div className="migration-banner">
+      <div>
+        <strong>Найдены старые локальные данные</strong>
+        <p>Можно перенести профиль и дневник в Supabase. Локальные данные не будут удалены автоматически.</p>
+      </div>
+      <div className="migration-actions">
+        <button type="button" onClick={onMigrate} disabled={busy}>{busy ? "Перенос..." : "Перенести"}</button>
+        <button type="button" onClick={onDismiss} disabled={busy}>Позже</button>
+      </div>
+    </div>
   );
 }
 
@@ -1268,6 +1527,18 @@ function loadChatMessages(): ChatMessage[] {
   } catch {
     return [{ id: "hello", role: "assistant", text: "Я ваш ИИ фитнес-ассистент. Могу считать еду, помогать с тренировками, рационом, сушкой и восстановлением." }];
   }
+}
+
+function defaultChatMessages(): ChatMessage[] {
+  return [{ id: "hello", role: "assistant", text: "Я ваш ИИ фитнес-ассистент. Могу считать еду, помогать с тренировками, рационом, сушкой и восстановлением." }];
+}
+
+function supabaseDataErrorText(error: unknown) {
+  if (!navigator.onLine) return "Нет интернета. Данные Supabase сейчас недоступны.";
+  if (error instanceof Error && error.message === "supabase_not_configured") {
+    return "Supabase не настроен. Добавьте VITE_SUPABASE_URL и VITE_SUPABASE_PUBLISHABLE_KEY.";
+  }
+  return "Supabase временно недоступен. Попробуйте позже.";
 }
 
 function buildAnalyzeContext(settings: AppSettings, profile: UserProfile | null, today: NutritionTotal) {

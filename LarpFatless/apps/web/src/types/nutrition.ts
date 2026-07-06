@@ -3,6 +3,16 @@ export type AnalyzeInputType = "text" | "image";
 export type Gender = "male" | "female";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "high";
 export type WeightGoal = "lose" | "maintain" | "gain";
+export type AppLanguage = "ru" | "en";
+
+export interface AppSettings {
+  theme: "dark" | "light";
+  assistantEnabled: boolean;
+  language: AppLanguage;
+  units: "kg" | "lb";
+  notifications: boolean;
+  nickname: string;
+}
 
 export interface NutritionItem {
   name: string;
