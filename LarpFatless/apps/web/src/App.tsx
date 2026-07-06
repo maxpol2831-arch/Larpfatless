@@ -34,7 +34,7 @@ import { GradientButton } from "./components/GradientButton";
 import { MainMenuHeader } from "./components/MainMenuHeader";
 import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
-import { authErrorText, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
+import { authErrorText, handleAuthRedirect, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
 import {
   clearCloudMeals,
@@ -164,6 +164,7 @@ export function App() {
   const [authName, setAuthName] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [authNotice, setAuthNotice] = useState("");
   const [cloudLoading, setCloudLoading] = useState(false);
   const [migrationAvailable, setMigrationAvailable] = useState(false);
   const [migrationBusy, setMigrationBusy] = useState(false);
@@ -228,6 +229,19 @@ export function App() {
     return observeAuth((user) => {
       setAuthUser(user);
       setAuthReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    void handleAuthRedirect().then((result) => {
+      if (result.status === "success") {
+        setAuthNotice(result.message);
+        setAuthError("");
+      }
+      if (result.status === "error") {
+        setAuthError(result.message);
+        setAuthNotice("");
+      }
     });
   }, []);
 
@@ -320,10 +334,15 @@ export function App() {
 
     setAuthLoading(true);
     setAuthError("");
+    setAuthNotice("");
 
     try {
       if (authMode === "register") {
-        await registerWithEmail(authEmail.trim(), authPassword, authName);
+        const result = await registerWithEmail(authEmail.trim(), authPassword, authName);
+        if (result.needsConfirmation) {
+          setAuthNotice("Письмо для подтверждения отправлено на email. Откройте ссылку из письма, затем вернитесь в приложение.");
+          setAuthMode("login");
+        }
       } else {
         await loginWithEmail(authEmail.trim(), authPassword);
       }
@@ -338,6 +357,7 @@ export function App() {
   const signOutUser = async () => {
     setAuthLoading(true);
     setAuthError("");
+    setAuthNotice("");
     try {
       await logout();
       setAuthPassword("");
@@ -649,6 +669,7 @@ export function App() {
           name={authName}
           loading={authLoading}
           error={authError}
+          notice={authNotice}
           supabaseConfigured={isSupabaseConfigured}
           onModeChange={setAuthMode}
           onEmailChange={setAuthEmail}
@@ -889,6 +910,7 @@ function AuthPanel({
   name,
   loading,
   error,
+  notice,
   supabaseConfigured,
   onModeChange,
   onEmailChange,
@@ -902,6 +924,7 @@ function AuthPanel({
   name: string;
   loading: boolean;
   error: string;
+  notice: string;
   supabaseConfigured: boolean;
   onModeChange: (mode: "login" | "register") => void;
   onEmailChange: (value: string) => void;
@@ -917,7 +940,6 @@ function AuthPanel({
         <Flame size={26} />
       </div>
       <h1>LarpFatless</h1>
-      <p>Войдите в аккаунт, чтобы профиль, дневник и настройки сохранялись в Supabase.</p>
 
       <div className="panel auth-panel">
         <div className="auth-mode">
@@ -959,6 +981,13 @@ function AuthPanel({
           <div className="error-card auth-inline-error">
             <strong>Не получилось</strong>
             <p>{error}</p>
+          </div>
+        )}
+
+        {notice && (
+          <div className="auth-success">
+            <strong>Готово</strong>
+            <p>{notice}</p>
           </div>
         )}
 

@@ -1,14 +1,44 @@
 # Supabase для LarpFatless PWA
 
-## 1. Что включить в Supabase
+## 1. Auth
 
 1. Создайте проект в Supabase.
-2. Откройте **Authentication -> Providers -> Email**.
+2. Откройте **Authentication -> Sign In / Providers -> Email**.
 3. Включите **Email provider**.
-4. Для тестов можно временно выключить подтверждение email. Для продакшена лучше оставить подтверждение включенным.
-5. Откройте **SQL Editor** и выполните SQL ниже.
+4. Подтверждение email можно оставить включённым: приложение обрабатывает callback `/auth/callback`.
 
-## 2. Таблицы и RLS
+## 2. URL Configuration
+
+Откройте **Authentication -> URL Configuration**.
+
+В поле **Site URL** укажите production-домен Vercel:
+
+```text
+https://larpfatless.vercel.app
+```
+
+Если у проекта другой домен, используйте именно его.
+
+В **Redirect URLs** добавьте:
+
+```text
+https://larpfatless.vercel.app/auth/callback
+https://larpfatless.vercel.app/**
+http://localhost:5173/auth/callback
+http://localhost:5173/**
+```
+
+Для preview-деплоев Vercel можно добавить wildcard с вашим team/account slug:
+
+```text
+https://*-ssacaii.vercel.app/**
+```
+
+Важно: URL из `emailRedirectTo` должен быть разрешён в Supabase, иначе ссылка подтверждения email откроется с ошибкой.
+
+## 3. Таблицы и RLS
+
+Откройте **SQL Editor** и выполните:
 
 ```sql
 create table if not exists public.profiles (
@@ -123,7 +153,7 @@ using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 ```
 
-## 3. Переменные окружения Vercel
+## 4. Environment Variables в Vercel
 
 Добавьте в **Vercel -> Project -> Settings -> Environment Variables**:
 
@@ -134,13 +164,14 @@ GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-`VITE_SUPABASE_PUBLISHABLE_KEY` можно использовать во фронтенде. Не добавляйте `service_role` или secret key в Vercel-переменные с префиксом `VITE_`.
+`VITE_SUPABASE_PUBLISHABLE_KEY` можно использовать во фронтенде. Не добавляйте `service_role` или secret key в переменные с префиксом `VITE_`.
 
-## 4. После изменения переменных
+## 5. После изменения настроек
 
-1. Нажмите **Redeploy** в Vercel.
+1. Сделайте **Redeploy** в Vercel.
 2. Откройте сайт.
 3. Создайте аккаунт.
-4. Заполните профиль.
-5. Добавьте еду в дневник.
-6. Проверьте в Supabase **Table Editor**, что строки появились в `profiles`, `meals`, `user_settings`.
+4. Подтвердите email по ссылке из письма.
+5. После возврата в приложение заполните профиль.
+6. Добавьте еду в дневник.
+7. Проверьте в Supabase **Table Editor**, что строки появились в `profiles`, `meals`, `user_settings`.

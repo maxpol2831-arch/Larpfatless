@@ -630,9 +630,48 @@ select option {
 }
 
 .auth-screen {
+  position: relative;
   min-height: 100dvh;
   justify-content: center;
   text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.auth-screen::before,
+.auth-screen::after {
+  content: "";
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.auth-screen::before {
+  background:
+    linear-gradient(125deg, rgba(52, 199, 89, 0.13), transparent 32%, rgba(21, 128, 72, 0.12) 58%, transparent),
+    linear-gradient(215deg, transparent 22%, rgba(255, 255, 255, 0.035), transparent 62%);
+  animation: auth-bg-flow 18s ease-in-out infinite alternate;
+}
+
+.auth-screen::after {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, transparent, black 20%, black 78%, transparent);
+  opacity: 0.42;
+  animation: auth-grid-drift 22s linear infinite;
+}
+
+.auth-screen .brand-mark {
+  animation: auth-logo-in 0.55s ease both;
+}
+
+.auth-screen h1 {
+  margin: var(--space-3) 0 var(--space-4);
+  font-size: 2.4rem;
+  line-height: 1;
 }
 
 .auth-screen > p {
@@ -645,6 +684,7 @@ select option {
 .auth-panel {
   gap: var(--space-4);
   text-align: left;
+  animation: auth-panel-in 0.42s ease both;
 }
 
 .auth-mode {
@@ -667,12 +707,18 @@ select option {
   color: var(--color-text);
   background: transparent;
   font-weight: 900;
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .auth-mode button.is-active,
 .migration-actions button:first-child {
   background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
   box-shadow: 0 10px 28px var(--color-shadow);
+}
+
+.auth-mode button:active,
+.auth-panel .gradient-button:active {
+  transform: scale(0.98);
 }
 
 .input-with-icon {
@@ -683,6 +729,14 @@ select option {
   border-radius: var(--radius-control);
   background: rgba(255, 255, 255, 0.06);
   padding: 0 var(--space-3);
+  width: 100%;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-with-icon:focus-within {
+  border-color: rgba(52, 199, 89, 0.6);
+  background: rgba(255, 255, 255, 0.085);
+  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.13);
 }
 
 .input-with-icon svg {
@@ -694,12 +748,40 @@ select option {
   border: 0;
   background: transparent;
   padding-inline: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .auth-inline-error,
 .auth-wide-error {
   width: 100%;
   box-shadow: none;
+}
+
+.auth-inline-error {
+  animation: auth-error-in 0.22s ease both;
+}
+
+.auth-success {
+  width: 100%;
+  border: 1px solid rgba(52, 199, 89, 0.34);
+  border-radius: var(--radius-control);
+  background: rgba(52, 199, 89, 0.1);
+  padding: var(--space-3);
+  color: var(--color-text);
+  animation: food-in 0.26s ease both;
+}
+
+.auth-success strong {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.auth-success p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
 }
 
 .cloud-account-bar,
@@ -1156,6 +1238,60 @@ select option {
   }
 }
 
+@keyframes auth-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-bg-flow {
+  from {
+    transform: translate3d(-1.5%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.5%, 1%, 0) scale(1.04);
+  }
+}
+
+@keyframes auth-grid-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 44px 44px, 44px 44px;
+  }
+}
+
+@keyframes auth-error-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  45% {
+    transform: translateX(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @keyframes avatar-wink {
   0%,
   100% {
@@ -1171,6 +1307,17 @@ select option {
 
 .shake {
   animation: shake 0.32s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 @media (min-width: 720px) {
