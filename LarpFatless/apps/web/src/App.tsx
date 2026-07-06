@@ -1598,7 +1598,33 @@ function supabaseDataErrorText(error: unknown) {
   if (error instanceof Error && error.message === "supabase_not_configured") {
     return "Supabase не настроен. Добавьте VITE_SUPABASE_URL и VITE_SUPABASE_PUBLISHABLE_KEY.";
   }
-  return "Supabase временно недоступен. Попробуйте позже.";
+
+  const details = supabaseErrorDetails(error);
+  if (details.includes("pgrst205") || details.includes("could not find the table") || details.includes("schema cache")) {
+    return "В Supabase не найдены таблицы profiles, meals или user_settings. Выполните SQL из docs/supabase-vercel.md в SQL Editor.";
+  }
+  if (details.includes("42501") || details.includes("permission denied") || details.includes("row-level security") || details.includes("rls")) {
+    return "Supabase отклонил доступ к данным. Проверьте RLS-политики для profiles, meals и user_settings.";
+  }
+  if (details.includes("401") || details.includes("invalid api key") || details.includes("jwt")) {
+    return "Supabase ключ или URL указаны неверно. Проверьте VITE_SUPABASE_URL и VITE_SUPABASE_PUBLISHABLE_KEY в Vercel.";
+  }
+  if (details.includes("failed to fetch") || details.includes("network")) {
+    return "Нет соединения с Supabase. Проверьте интернет, URL проекта и блокировку запросов в браузере.";
+  }
+
+  return "Supabase вернул ошибку данных. Проверьте таблицы, RLS-политики и env-переменные проекта.";
+}
+
+function supabaseErrorDetails(error: unknown) {
+  if (!error) return "";
+  if (error instanceof Error) return error.message.toLowerCase();
+
+  try {
+    return JSON.stringify(error).toLowerCase();
+  } catch {
+    return String(error).toLowerCase();
+  }
 }
 
 function buildAnalyzeContext(settings: AppSettings, profile: UserProfile | null, today: NutritionTotal) {
