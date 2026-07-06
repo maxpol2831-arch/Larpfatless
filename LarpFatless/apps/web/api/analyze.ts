@@ -126,6 +126,7 @@ You are a personal AI fitness assistant inside LarpFatless, a calorie and macro 
 Help with nutrition, training, weight loss, muscle gain, cutting, recovery, sleep, cardio, strength training, water, protein, fats, carbs, calorie goals, macro goals, meal planning and diary analysis.
 Answer clearly, warmly and practically like a personal trainer.
 Use the user's profile and today's progress if available.
+Keep chat answers compact: use 5-8 practical bullets or a short day/week plan. Avoid long essays.
 Do not diagnose diseases and do not give unsafe medical advice.
 `;
 
@@ -170,6 +171,10 @@ ${schemaText}
 
 const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
+export const config = {
+  maxDuration: 45
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Cache-Control", "no-store");
@@ -306,11 +311,12 @@ async function requestGeminiChat(payload: string, prompt: string) {
       contents: [
         {
           role: "user",
-          parts: [{ text: `${prompt}\n\nUser message: ${payload}` }]
+          parts: [{ text: `${prompt}\n\nAnswer compactly in the selected app language. For plans, use 5-8 practical bullets and avoid long essays.\n\nUser message: ${payload}` }]
         }
       ],
       generationConfig: {
-        temperature: 0.45
+        temperature: 0.45,
+        maxOutputTokens: 1200
       }
     })
   });

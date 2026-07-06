@@ -1197,7 +1197,7 @@ function vibrate() {
 
 function errorText(error: unknown) {
   if (!(error instanceof Error)) return "Проблема с подключением. Попробуйте позже.";
-  if (error.message === "timeout") return "Запрос занял больше 15 секунд. Попробуйте ещё раз.";
+  if (error.message === "timeout") return "Запрос занял слишком много времени. Попробуйте ещё раз или задайте вопрос короче.";
   if (error.message === "parse_failed") return "ИИ вернул неполный ответ. Заполните значения вручную.";
   if (error.message === "gemini_key_missing") return "На хостинге не задан серверный ключ анализа.";
   if (error.message === "rate_limited") return "Сервис анализа временно перегружен, попробуйте через минуту.";

@@ -6,7 +6,9 @@ interface AnalyzeRequest {
   context?: AnalyzeContext;
 }
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const FOOD_REQUEST_TIMEOUT_MS = 20_000;
+const IMAGE_REQUEST_TIMEOUT_MS = 35_000;
+const CHAT_REQUEST_TIMEOUT_MS = 45_000;
 
 export async function analyzeText(text: string, context?: AnalyzeContext) {
   return analyze({ type: "text", payload: text, context });
@@ -18,7 +20,8 @@ export async function analyzeImage(base64: string, context?: AnalyzeContext) {
 
 async function analyze(request: AnalyzeRequest): Promise<AnalyzeResponse> {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutMs = getRequestTimeout(request);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch("/api/analyze", {
@@ -57,4 +60,10 @@ async function analyze(request: AnalyzeRequest): Promise<AnalyzeResponse> {
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+function getRequestTimeout(request: AnalyzeRequest) {
+  if (request.type === "image") return IMAGE_REQUEST_TIMEOUT_MS;
+  if (request.context?.assistantEnabled) return CHAT_REQUEST_TIMEOUT_MS;
+  return FOOD_REQUEST_TIMEOUT_MS;
 }
