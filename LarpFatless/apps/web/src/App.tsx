@@ -28,6 +28,7 @@ import {
   UserRound,
   Utensils
 } from "lucide-react";
+import { AnimatedProgressRing } from "./components/AnimatedProgressRing";
 import { CustomSegmentedControl } from "./components/CustomSegmentedControl";
 import { FoodItemCard } from "./components/FoodItemCard";
 import { GradientButton } from "./components/GradientButton";
@@ -1022,6 +1023,9 @@ function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; t
   return (
     <div className="dashboard">
       <section className="dashboard-hero">
+        <div className="dashboard-hero__ring">
+          <AnimatedProgressRing value={today.calories} target={profile.dailyCalories} />
+        </div>
         <div>
           <span>{t("eaten")}</span>
           <strong>{Math.round(today.calories)} {t("kcal")}</strong>
