@@ -35,7 +35,7 @@ Production-сборка:
    - Install Command: `pnpm install`
 3. В разделе Environment Variables добавьте:
    - `GEMINI_API_KEY` - ключ Google Gemini API
-   - `GEMINI_MODEL` - `gemini-1.5-flash` или другая совместимая multimodal-модель
+   - `GEMINI_MODEL` - `gemini-2.5-flash` или другая совместимая multimodal-модель
 4. Нажмите Deploy.
 
 ## Важно по безопасности

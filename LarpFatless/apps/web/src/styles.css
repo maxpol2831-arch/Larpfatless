@@ -85,6 +85,12 @@ button:disabled {
   margin-bottom: var(--space-4);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .avatar-button,
 .header-icon-button {
   border: 0;
@@ -404,6 +410,115 @@ select option {
   font-size: 1.7rem;
 }
 
+.section-heading.compact {
+  margin-bottom: var(--space-3);
+}
+
+.dashboard {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard-hero,
+.macro-panel,
+.today-card,
+.recent-card,
+.settings-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  backdrop-filter: blur(22px);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.2);
+}
+
+.dashboard-hero {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.dashboard-hero div {
+  min-height: 86px;
+  display: grid;
+  align-content: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: rgba(52, 199, 89, 0.1);
+}
+
+.dashboard-hero span,
+.macro-progress__top span,
+.recent-meal span {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.dashboard-hero strong {
+  font-size: clamp(1rem, 4.5vw, 1.45rem);
+}
+
+.macro-panel,
+.today-card,
+.recent-card,
+.settings-card {
+  padding: var(--space-4);
+}
+
+.macro-progress + .macro-progress {
+  margin-top: var(--space-4);
+}
+
+.macro-progress__top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.macro-progress__track {
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.macro-progress__track div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  box-shadow: 0 0 18px var(--color-shadow);
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.recent-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.recent-meal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.recent-meal strong,
+.recent-meal span {
+  display: block;
+}
+
+.empty-state.inline {
+  padding: var(--space-4);
+  box-shadow: none;
+}
+
 .menu-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -518,6 +633,9 @@ select option {
   display: grid;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
+  max-height: 42dvh;
+  overflow: auto;
+  padding-right: var(--space-1);
 }
 
 .chat-message {
@@ -528,6 +646,9 @@ select option {
   padding: var(--space-3) var(--space-4);
   line-height: 1.45;
   animation: food-in 0.28s ease both;
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
 }
 
 .chat-message--assistant {
@@ -539,6 +660,39 @@ select option {
   justify-self: end;
   background: rgba(52, 199, 89, 0.18);
   border-color: rgba(52, 199, 89, 0.28);
+}
+
+.chat-message__avatar {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--color-accent-start);
+}
+
+.quick-prompts {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: 0 0 var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.quick-prompts button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text);
+  padding: 0 var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 850;
 }
 
 .medical-warning {
@@ -699,6 +853,140 @@ select option {
   margin-bottom: var(--space-4);
 }
 
+.settings-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.settings-card h3 {
+  margin: 0 0 var(--space-3);
+}
+
+.theme-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.theme-switcher button,
+.settings-actions button,
+.settings-import {
+  min-height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  font-weight: 900;
+}
+
+.theme-switcher button.is-active {
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  box-shadow: 0 0 22px var(--color-shadow);
+}
+
+.setting-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border-radius: var(--radius-control);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.setting-toggle__icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(52, 199, 89, 0.14);
+  color: var(--color-accent-start);
+}
+
+.setting-toggle strong,
+.setting-toggle small {
+  display: block;
+}
+
+.setting-toggle small,
+.about-list,
+.settings-field span {
+  color: var(--color-text-secondary);
+}
+
+.setting-toggle input {
+  width: 44px;
+  min-height: 26px;
+  accent-color: var(--color-accent-start);
+}
+
+.settings-field {
+  display: block;
+  margin-bottom: var(--space-3);
+}
+
+.settings-field span {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 800;
+}
+
+.nickname-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+}
+
+.nickname-row button {
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: linear-gradient(135deg, var(--color-accent-start), var(--color-accent-end));
+  color: var(--color-text);
+  padding: 0 var(--space-4);
+  font-weight: 900;
+}
+
+.field-hint,
+.field-error {
+  display: block;
+  margin-top: var(--space-2);
+  line-height: 1.35;
+}
+
+.field-hint {
+  color: var(--color-text-secondary);
+}
+
+.field-error {
+  color: var(--color-danger);
+}
+
+.settings-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settings-import {
+  cursor: pointer;
+}
+
+.settings-import input {
+  display: none;
+}
+
+.about-list {
+  display: grid;
+  gap: var(--space-3);
+  line-height: 1.5;
+}
+
 .gradient-button span {
   display: inline-flex;
   align-items: center;
@@ -782,6 +1070,19 @@ select option {
 @media (max-width: 390px) {
   .main-tabs button {
     font-size: 0.82rem;
+  }
+
+  .main-header {
+    grid-template-columns: auto 1fr;
+  }
+
+  .header-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+
+  .dashboard-hero {
+    grid-template-columns: 1fr;
   }
 
   .food-card__grid {

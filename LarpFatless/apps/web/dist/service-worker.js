@@ -1,4 +1,4 @@
-const CACHE_NAME = "larpfatless-pwa-v2";
+const CACHE_NAME = "larpfatless-pwa-v3";
 const STATIC_ASSETS = ["/", "/index.html", "/manifest.json", "/icons/app-icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -23,6 +23,21 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
 
   if (request.method !== "GET" || new URL(request.url).pathname.startsWith("/api/")) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match("/index.html"))
+    );
     return;
   }
 

@@ -22,8 +22,29 @@ export interface NutritionTotal {
 }
 
 export interface AnalyzeResponse {
+  type?: "chat" | "food_analysis";
   items: NutritionItem[];
   total: NutritionTotal;
+  assistantMessage?: string;
+}
+
+export interface AnalyzeContext {
+  assistantEnabled: boolean;
+  language: "ru" | "en";
+  profile?: {
+    name: string;
+    age: number;
+    heightCm: number;
+    weightKg: number;
+    gender: Gender;
+    activityLevel: ActivityLevel;
+    goal: WeightGoal;
+    dailyCalories: number;
+    proteinGoal: number;
+    fatGoal: number;
+    carbsGoal: number;
+  };
+  today?: NutritionTotal;
 }
 
 export interface DiaryEntry extends AnalyzeResponse {

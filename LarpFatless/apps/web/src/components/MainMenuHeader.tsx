@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Download, Settings } from "lucide-react";
+import { Download, Settings, UserRound } from "lucide-react";
 import type { NutritionTotal, UserProfile } from "../types/nutrition";
 
 const avatarUrl = new URL("../assets/avatar.svg", import.meta.url).href;
@@ -7,17 +7,19 @@ const avatarUrl = new URL("../assets/avatar.svg", import.meta.url).href;
 interface MainMenuHeaderProps {
   profile: UserProfile;
   today: NutritionTotal;
+  title: string;
+  dailyLabel: string;
   onOpenProfile: () => void;
+  onOpenSettings: () => void;
   onAvatarLongPress?: () => void;
   onInstall?: () => void;
   canInstall: boolean;
   avatarWink?: boolean;
 }
 
-export function MainMenuHeader({ profile, today, onOpenProfile, onAvatarLongPress, onInstall, canInstall, avatarWink = false }: MainMenuHeaderProps) {
+export function MainMenuHeader({ profile, today, title, dailyLabel, onOpenProfile, onOpenSettings, onAvatarLongPress, onInstall, canInstall, avatarWink = false }: MainMenuHeaderProps) {
   const timerRef = useRef<number | undefined>(undefined);
   const longPressTriggeredRef = useRef(false);
-  const greeting = new Date().getHours() >= 0 && new Date().getHours() < 5 ? "Ночной дожор?" : `Привет, ${profile.name}`;
 
   const startLongPress = () => {
     longPressTriggeredRef.current = false;
@@ -56,18 +58,22 @@ export function MainMenuHeader({ profile, today, onOpenProfile, onAvatarLongPres
         <span>{profile.name.slice(0, 2).toUpperCase()}</span>
       </button>
       <div className="main-header__copy">
-        <p>{greeting}</p>
-        <strong>{Math.round(today.calories)} / {profile.dailyCalories} ккал сегодня</strong>
+        <p>{title}</p>
+        <strong>{Math.round(today.calories)} / {profile.dailyCalories} {dailyLabel}</strong>
       </div>
-      {canInstall ? (
-        <button className="header-icon-button" type="button" onClick={onInstall} aria-label="Установить приложение">
-          <Download size={20} />
+      <div className="header-actions">
+        <button className="header-icon-button" type="button" onClick={onOpenProfile} aria-label="Открыть профиль">
+          <UserRound size={20} />
         </button>
-      ) : (
-        <button className="header-icon-button" type="button" onClick={onOpenProfile} aria-label="Настройки">
+        <button className="header-icon-button" type="button" onClick={onOpenSettings} aria-label="Настройки">
           <Settings size={20} />
         </button>
-      )}
+        {canInstall && (
+          <button className="header-icon-button" type="button" onClick={onInstall} aria-label="Установить приложение">
+            <Download size={20} />
+          </button>
+        )}
+      </div>
     </header>
   );
 }

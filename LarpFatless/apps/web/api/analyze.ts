@@ -1,5 +1,6 @@
 type Confidence = "high" | "medium" | "low";
 type AnalyzeInputType = "text" | "image";
+type AppLanguage = "ru" | "en";
 
 interface NutritionItem {
   name: string;
@@ -19,6 +20,12 @@ interface AnalyzeResponse {
     fat_g: number;
     carbs_g: number;
   };
+  assistantMessage?: string;
+}
+
+interface ChatResponse {
+  type: "chat";
+  message: string;
 }
 
 type VercelRequest = {
@@ -35,6 +42,29 @@ type VercelResponse = {
 interface AnalyzeRequestBody {
   type?: AnalyzeInputType;
   payload?: string;
+  context?: {
+    assistantEnabled?: boolean;
+    language?: AppLanguage;
+    profile?: {
+      name: string;
+      age?: number;
+      heightCm?: number;
+      weightKg?: number;
+      gender?: string;
+      activityLevel?: string;
+      goal: string;
+      dailyCalories: number;
+      proteinGoal: number;
+      fatGoal: number;
+      carbsGoal: number;
+    };
+    today?: {
+      calories: number;
+      protein_g: number;
+      fat_g: number;
+      carbs_g: number;
+    };
+  };
 }
 
 interface GeminiPart {
@@ -62,7 +92,8 @@ const nutritionJsonSchema = {
     protein_g: "number",
     fat_g: "number",
     carbs_g: "number"
-  }
+  },
+  assistantMessage: "string"
 };
 
 const schemaText = JSON.stringify(nutritionJsonSchema, null, 2);
@@ -79,9 +110,51 @@ confidence:
 - low, если данных мало и значения приблизительные.
 `;
 
+const fitnessAssistantPrompt = `
+Ты персональный ИИ фитнес-ассистент LarpFatless: дружелюбный тренер по питанию, тренировкам, восстановлению и привычкам.
+Отвечай на любые вопросы про похудение, набор массы, сушку, питание, тренировки, упражнения, спортпит, сон, кардио, силовые, воду, витамины, расчет калорий и БЖУ.
+Если в сообщении есть еда, оцени КБЖУ в items и total. Если еды нет, верни items: [] и total с нулями.
+Всегда добавляй assistantMessage: короткий мотивирующий ответ или рекомендацию тренера на русском языке.
+Не ставь медицинские диагнозы и не обещай гарантированный результат.
+Верни только валидный JSON без markdown, без пояснений и без текста вокруг.
+Схема ответа:
+${schemaText}
+`;
+
+const fitnessAssistantPromptEn = `
+You are a personal AI fitness assistant inside LarpFatless, a calorie and macro tracking app.
+Help with nutrition, training, weight loss, muscle gain, cutting, recovery, sleep, cardio, strength training, water, protein, fats, carbs, calorie goals, macro goals, meal planning and diary analysis.
+Answer clearly, warmly and practically like a personal trainer.
+Use the user's profile and today's progress if available.
+Do not diagnose diseases and do not give unsafe medical advice.
+`;
+
+const fitnessAssistantPromptRu = `
+Ты персональный фитнес-ассистент внутри приложения для подсчёта калорий.
+Помогай с питанием, тренировками, похудением, набором массы, сушкой, восстановлением, сном, кардио, силовыми, водой, белками, жирами, углеводами, расчетом калорий и БЖУ, рационом и анализом дневника.
+Отвечай понятно, дружелюбно и практично как персональный тренер.
+Учитывай профиль пользователя и прогресс за сегодня, если они доступны.
+Не ставь диагнозы и не давай опасных медицинских советов.
+`;
+
+const calculatorOnlyPromptRu = `
+Ты калькулятор калорий и КБЖУ.
+Твоя задача — определять калории, белки, жиры и углеводы по фото еды или текстовому описанию.
+Не отвечай на вопросы про тренировки, фитнес и здоровье.
+Если пользователь спрашивает не про еду или калории, попроси включить фитнес-ассистента в настройках.
+`;
+
+const calculatorOnlyPromptEn = `
+You are a calorie and macro calculator.
+Your task is to estimate calories, protein, fat and carbs from a food photo or text description.
+Do not answer training, fitness or health questions.
+If the user asks about anything outside food or calories, ask them to enable Fitness Assistant in settings.
+`;
+
 const imageNutritionPrompt = `
 Ты мультимодальный нутрициологический ассистент LarpFatless.
 Определи еду на фото, оцени вес порций и КБЖУ по каждому элементу.
+В assistantMessage добавь короткую рекомендацию: подходит ли блюдо под похудение/массу, чего не хватает, что можно добавить.
 Верни только валидный JSON без markdown, без пояснений и без текста вокруг.
 Схема ответа:
 ${schemaText}
@@ -95,7 +168,7 @@ ${schemaText}
 Без markdown, без комментариев, без текста до или после JSON.
 `;
 
-const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -109,6 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const body = req.body as AnalyzeRequestBody;
   const type = body?.type;
   const payload = body?.payload?.trim();
+  const context = body?.context;
 
   if ((type !== "text" && type !== "image") || !payload) {
     res.status(400).json({ error: "invalid_request" });
@@ -121,8 +195,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const prompt = type === "image" ? imageNutritionPrompt : textNutritionPrompt;
-    const raw = await requestGemini(type, payload, prompt);
+    const language = context?.language === "en" ? "en" : "ru";
+    const shouldChat = type === "text" && Boolean(context?.assistantEnabled) && !looksLikeFoodRequest(payload);
+
+    if (shouldChat) {
+      const message = await requestGeminiChat(payload, withContext(language === "en" ? fitnessAssistantPromptEn : fitnessAssistantPromptRu, context));
+      res.status(200).json({ type: "chat", message } satisfies ChatResponse);
+      return;
+    }
+
+    if (!context?.assistantEnabled && type === "text" && !looksLikeFoodRequest(payload)) {
+      res.status(200).json({
+        type: "chat",
+        message: language === "en"
+          ? "Enable Fitness Assistant in settings to get training and nutrition advice."
+          : "Включите фитнес-ассистента в настройках, чтобы получать советы по тренировкам и питанию."
+      } satisfies ChatResponse);
+      return;
+    }
+
+    const prompt = type === "image"
+      ? imageNutritionPrompt
+      : context?.assistantEnabled
+        ? `${language === "en" ? fitnessAssistantPromptEn : fitnessAssistantPromptRu}\n\nIf the user asks to calculate food or describes food, return valid JSON according to this schema only:\n${schemaText}`
+        : `${language === "en" ? calculatorOnlyPromptEn : calculatorOnlyPromptRu}\n\nReturn valid JSON only according to this schema:\n${schemaText}`;
+    const raw = await requestGemini(type, payload, withContext(prompt, context));
     const parsed = parseAnalyzeResponse(raw);
 
     if (parsed) {
@@ -130,7 +227,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const retryRaw = await requestGemini(type, payload, `${prompt}\n\n${retryJsonPrompt}`);
+    const retryRaw = await requestGemini(type, payload, withContext(`${prompt}\n\n${retryJsonPrompt}`, context));
     const retryParsed = parseAnalyzeResponse(retryRaw);
 
     if (!retryParsed) {
@@ -147,6 +244,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     res.status(500).json({ error: "analyze_failed" });
   }
+}
+
+function withContext(prompt: string, context?: AnalyzeRequestBody["context"]) {
+  if (!context) return prompt;
+
+  return `${prompt}
+
+Контекст пользователя:
+${JSON.stringify(context, null, 2)}
+Используй контекст, чтобы отвечать персонально: сколько калорий/БЖУ осталось, какая цель, какие рекомендации дать.`;
 }
 
 async function requestGemini(type: AnalyzeInputType, payload: string, prompt: string) {
@@ -189,6 +296,44 @@ async function requestGemini(type: AnalyzeInputType, payload: string, prompt: st
   return json.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "";
 }
 
+async function requestGeminiChat(payload: string, prompt: string) {
+  const response = await fetch(`${geminiUrl}?key=${process.env.GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${prompt}\n\nUser message: ${payload}` }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.45
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (response.status === 429 || /RESOURCE_EXHAUSTED/i.test(errorText)) {
+      throw new Error("rate_limited");
+    }
+    throw new Error(`Gemini returned ${response.status}`);
+  }
+
+  const json = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+
+  return json.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim() || "Готов помочь. Сформулируйте вопрос чуть подробнее.";
+}
+
+function looksLikeFoodRequest(value: string) {
+  return /(рассчитай кбжу|посчитай кбжу|сколько кбжу|съел|съела|ел |ела |завтрак|обед|ужин|перекус|\d+\s?(г|гр|gram|grams|g)\b|яйц|кур|рис|греч|творог|молок|сыр|мяс|рыб|хлеб|салат|суп|карто|кофе|банан|яблок|овсян|ate|i had|food log|meal log|breakfast|lunch|dinner|chicken|rice|egg|oat|banana)/i.test(value);
+}
+
 function parseAnalyzeResponse(raw: string): AnalyzeResponse | null {
   const jsonText = extractJson(raw);
   if (!jsonText) return null;
@@ -213,11 +358,45 @@ function extractJson(raw: string) {
   return withoutFence.slice(start, end + 1);
 }
 
-function normalizeAnalyzeResponse(value: AnalyzeResponse) {
+function normalizeAnalyzeResponse(value: AnalyzeResponse & {
+  type?: string;
+  foodName?: string;
+  estimatedWeight?: number;
+  calories?: number;
+  protein?: number;
+  fat?: number;
+  carbs?: number;
+  confidence?: number | Confidence;
+  advice?: string;
+}) {
+  if (value.type === "food_analysis") {
+    const item = normalizeItem({
+      name: value.foodName || "Еда",
+      weight_g: value.estimatedWeight ?? 0,
+      calories: value.total?.calories ?? value.calories ?? 0,
+      protein_g: value.protein ?? 0,
+      fat_g: value.fat ?? 0,
+      carbs_g: value.carbs ?? 0,
+      confidence: typeof value.confidence === "number" ? numericConfidence(value.confidence) : normalizeConfidence(value.confidence ?? "medium")
+    });
+
+    if (!item) return null;
+
+    return {
+      items: [item],
+      total: {
+        calories: roundNumber(item.calories),
+        protein_g: roundNumber(item.protein_g),
+        fat_g: roundNumber(item.fat_g),
+        carbs_g: roundNumber(item.carbs_g)
+      },
+      assistantMessage: value.advice || value.assistantMessage
+    };
+  }
+
   if (!Array.isArray(value.items) || !value.total) return null;
 
   const items = value.items.map(normalizeItem).filter(Boolean) as NutritionItem[];
-  if (items.length === 0) return null;
 
   const total = {
     calories: roundNumber(value.total.calories ?? sum(items, "calories")),
@@ -226,7 +405,11 @@ function normalizeAnalyzeResponse(value: AnalyzeResponse) {
     carbs_g: roundNumber(value.total.carbs_g ?? sum(items, "carbs_g"))
   };
 
-  return { items, total };
+  return {
+    items,
+    total,
+    assistantMessage: typeof value.assistantMessage === "string" ? value.assistantMessage.trim() : undefined
+  };
 }
 
 function normalizeItem(item: NutritionItem) {
@@ -245,6 +428,12 @@ function normalizeItem(item: NutritionItem) {
 
 function normalizeConfidence(value: Confidence) {
   return value === "high" || value === "medium" || value === "low" ? value : "medium";
+}
+
+function numericConfidence(value: number): Confidence {
+  if (value >= 0.8) return "high";
+  if (value >= 0.45) return "medium";
+  return "low";
 }
 
 function roundNumber(value: number) {

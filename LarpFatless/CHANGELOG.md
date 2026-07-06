@@ -1,4 +1,3 @@
-[CHANGELOG.md](https://github.com/user-attachments/files/29685396/CHANGELOG.md)
 # Changelog
 
 ## 2026-07-05
