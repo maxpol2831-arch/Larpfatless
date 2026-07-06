@@ -8,7 +8,7 @@ interface AnalyzeRequest {
 
 const FOOD_REQUEST_TIMEOUT_MS = 20_000;
 const IMAGE_REQUEST_TIMEOUT_MS = 35_000;
-const CHAT_REQUEST_TIMEOUT_MS = 45_000;
+const CHAT_REQUEST_TIMEOUT_MS = 60_000;
 
 export async function analyzeText(text: string, context?: AnalyzeContext) {
   return analyze({ type: "text", payload: text, context });
