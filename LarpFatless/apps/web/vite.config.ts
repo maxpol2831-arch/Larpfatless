@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      tslib: fileURLToPath(new URL("./node_modules/tslib/tslib.es6.mjs", import.meta.url))
+      tslib: fileURLToPath(new URL("../../node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs", import.meta.url))
     }
   },
   optimizeDeps: {
