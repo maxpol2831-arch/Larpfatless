@@ -1,11 +1,11 @@
 import { useRef } from "react";
 import { Download, Settings, UserRound } from "lucide-react";
+import { getAccountAvatar } from "../lib/accountAvatars";
 import type { NutritionTotal, UserProfile } from "../types/nutrition";
-
-const avatarUrl = new URL("../assets/avatar.svg", import.meta.url).href;
 
 interface MainMenuHeaderProps {
   profile: UserProfile;
+  accountId?: string;
   today: NutritionTotal;
   title: string;
   dailyLabel: string;
@@ -17,9 +17,10 @@ interface MainMenuHeaderProps {
   avatarWink?: boolean;
 }
 
-export function MainMenuHeader({ profile, today, title, dailyLabel, onOpenProfile, onOpenSettings, onAvatarLongPress, onInstall, canInstall, avatarWink = false }: MainMenuHeaderProps) {
+export function MainMenuHeader({ profile, accountId, today, title, dailyLabel, onOpenProfile, onOpenSettings, onAvatarLongPress, onInstall, canInstall, avatarWink = false }: MainMenuHeaderProps) {
   const timerRef = useRef<number | undefined>(undefined);
   const longPressTriggeredRef = useRef(false);
+  const accountAvatar = getAccountAvatar(accountId || profile.name);
 
   const startLongPress = () => {
     longPressTriggeredRef.current = false;
@@ -54,7 +55,7 @@ export function MainMenuHeader({ profile, today, title, dailyLabel, onOpenProfil
         onPointerCancel={clearLongPress}
         aria-label="Открыть профиль"
       >
-        <img src={avatarUrl} alt="" onError={(event) => (event.currentTarget.style.display = "none")} />
+        <img src={accountAvatar.imageUrl} alt="" onError={(event) => (event.currentTarget.style.display = "none")} />
         <span>{profile.name.slice(0, 2).toUpperCase()}</span>
       </button>
       <div className="main-header__copy">
