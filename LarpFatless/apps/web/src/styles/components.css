@@ -98,7 +98,7 @@
   padding: 10px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  background: rgba(8, 8, 8, 0.86);
+  background: var(--header-bg);
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
   box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.065);
@@ -259,6 +259,10 @@
   margin-bottom: 14px;
   padding: 12px;
   border-radius: var(--radius-lg);
+}
+
+.cloud-account-bar {
+  display: none;
 }
 
 .cloud-account-bar span,
@@ -574,18 +578,18 @@
 .primary-button {
   width: 100%;
   min-height: 54px;
-  border: 1px solid rgba(255, 255, 255, 0.84);
-  border-radius: var(--radius-md);
-  background: #fff;
-  color: #050505;
+  border: 1px solid var(--action-border);
+  border-radius: var(--radius-pill);
+  background: var(--action-bg);
+  color: var(--action-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 0 18px;
   font-weight: 900;
-  box-shadow: var(--white-glow);
-  transition: transform var(--transition-fast), filter var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .glass-ui-button {
@@ -627,7 +631,7 @@
 }
 
 .glass-ui-button--glow:hover {
-  box-shadow: var(--white-glow), 0 18px 48px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .glass-ui-button--lift:hover {
@@ -680,7 +684,8 @@
 }
 
 .primary-button:hover {
-  filter: brightness(0.94);
+  background: var(--action-bg-hover);
+  border-color: var(--glass-border-strong);
 }
 
 .primary-button:active,
@@ -850,10 +855,10 @@
 .chat-log {
   display: grid;
   gap: 12px;
-  max-height: 54dvh;
+  max-height: min(48dvh, 430px);
   margin-bottom: 16px;
   overflow: auto;
-  padding-right: 2px;
+  padding: 0 2px 8px 0;
   scroll-behavior: smooth;
 }
 
@@ -889,14 +894,16 @@
 }
 
 .quick-prompts {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 14px;
+  margin: 10px 0 14px;
 }
 
 .quick-prompts button {
-  min-height: 42px;
+  min-height: 48px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.055);
@@ -905,15 +912,18 @@
   justify-content: center;
   align-items: center;
   gap: 7px;
-  padding: 0 12px;
+  padding: 8px 12px;
   font-size: 0.84rem;
   font-weight: 820;
+  line-height: 1.18;
+  text-align: center;
+  white-space: normal;
 }
 
 .chat-log ~ .panel {
-  position: sticky;
-  bottom: calc(88px + env(safe-area-inset-bottom));
-  z-index: var(--z-floating);
+  position: relative;
+  bottom: auto;
+  z-index: 1;
 }
 
 .file-panel {
@@ -1135,9 +1145,9 @@
 .nickname-row button {
   min-height: 48px;
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: #fff;
-  color: #050505;
+  border-radius: var(--radius-pill);
+  background: var(--action-bg);
+  color: var(--action-text);
   padding: 0 14px;
   font-weight: 900;
 }
@@ -1170,6 +1180,31 @@
 .settings-actions {
   display: grid;
   gap: 8px;
+}
+
+.account-settings {
+  display: grid;
+  gap: 10px;
+}
+
+.account-settings span {
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+  font-weight: 780;
+}
+
+.account-settings button {
+  min-height: 48px;
+  border: 1px solid var(--action-border);
+  border-radius: var(--radius-pill);
+  background: var(--action-bg);
+  color: var(--action-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-weight: 900;
 }
 
 .about-list {
