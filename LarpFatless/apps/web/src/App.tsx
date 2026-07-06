@@ -210,13 +210,13 @@ export function App() {
     () =>
       settings.language === "en"
         ? [
-            { icon: "🍗", label: "Track food", text: "Calculate macros: chicken breast 150 g, rice 200 g, vegetables 100 g" },
-            { icon: "🏋", label: "Workout plan", text: "Create a weekly workout plan for my goal" },
-            { icon: "🥗", label: "Meal plan", text: "Create a daily meal plan for my calories and macros" },
-            { icon: "💪", label: "Muscle gain", text: "How can I gain muscle without adding too much fat?" },
-            { icon: "🔥", label: "Weight loss", text: "What calorie deficit should I choose for weight loss?" },
-            { icon: "⚡", label: "Cutting", text: "How should I cut while keeping muscle?" },
-            { icon: "💬", label: "Ask", text: "How many calories can I still eat today?" }
+            { icon: "??", label: "Track food", text: "Calculate macros: chicken breast 150 g, rice 200 g, vegetables 100 g" },
+            { icon: "??", label: "Workout plan", text: "Create a weekly workout plan for my goal" },
+            { icon: "??", label: "Meal plan", text: "Create a daily meal plan for my calories and macros" },
+            { icon: "??", label: "Muscle gain", text: "How can I gain muscle without adding too much fat?" },
+            { icon: "??", label: "Weight loss", text: "What calorie deficit should I choose for weight loss?" },
+            { icon: "?", label: "Cutting", text: "How should I cut while keeping muscle?" },
+            { icon: "??", label: "Ask", text: "How many calories can I still eat today?" }
           ]
         : quickPrompts,
     [settings.language]
@@ -443,7 +443,7 @@ export function App() {
       return;
     }
 
-    if (!settings.assistantEnabled && /[?？]/.test(trimmed) && !looksLikeFood(trimmed)) {
+    if (!settings.assistantEnabled && /[??]/.test(trimmed) && !looksLikeFood(trimmed)) {
       setChatMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "assistant", text: t("assistantDisabledAdvice") }
@@ -497,7 +497,7 @@ export function App() {
       } else if (type === "text") {
         setChatMessages((current) => [
           ...current,
-          { id: crypto.randomUUID(), role: "assistant", text: result.items.length > 0 ? "Я оценил КБЖУ. Проверьте карточки ниже и сохраните в дневник, если всё похоже на правду." : "Готов помочь с питанием, тренировками и режимом. Задайте вопрос чуть подробнее." }
+          { id: crypto.randomUUID(), role: "assistant", text: result.items.length > 0 ? "Я оценил КБЖУ. Проверьте карточки ниже и сохраните в дневник, если всё похоже на правду." : "Готов помочь с питанием, тренировками и рационом. Уточните вопрос или опишите приём пищи." }
         ]);
       }
     } catch (nextError) {
@@ -533,7 +533,7 @@ export function App() {
     setSelectedImage(null);
     setImagePreview("");
     setScreen("diary");
-    setToast("Добавлено в дневник.");
+    setToast("Сохранено в дневник.");
     vibrate();
   };
 
@@ -551,7 +551,7 @@ export function App() {
   };
 
   const clearChat = () => {
-    const nextMessages = [{ id: "hello", role: "assistant" as const, text: "История очищена. Готов снова помочь с питанием и тренировками." }];
+    const nextMessages = [{ id: "hello", role: "assistant" as const, text: "История очищена. Можно снова начать с питания и тренировок." }];
     setChatMessages(nextMessages);
     setDraft(null);
     setToast("История ИИ очищена.");
@@ -650,7 +650,7 @@ export function App() {
 
   const triggerAvatarEasterEgg = () => {
     setAvatarWink(true);
-    setToast("Аватар подмигнул: курс на зелёную зону.");
+    setToast("Секрет активирован: аватар на вашей стороне.");
     window.setTimeout(() => setAvatarWink(false), 1200);
   };
 
@@ -736,13 +736,6 @@ export function App() {
           <span>{t("photo")}</span>
         </button>
       </nav>
-      <div className="cloud-account-bar">
-        <span>{authUser.email}</span>
-        <button type="button" onClick={signOutUser} disabled={authLoading}>
-          <LogOut size={16} />
-          Выйти
-        </button>
-      </div>
       {authError && <div className="error-card auth-wide-error"><strong>Supabase</strong><p>{authError}</p></div>}
       {cloudLoading && <div className="toast">Загружаем данные Supabase...</div>}
       {migrationAvailable && (
@@ -901,6 +894,9 @@ export function App() {
             onClearChat={clearChat}
             onExportDiary={exportDiary}
             onImportDiary={importDiary}
+            authEmail={authUser.email ?? ""}
+            authLoading={authLoading}
+            onSignOut={signOutUser}
           />
         </section>
       )}
@@ -1004,7 +1000,7 @@ function AuthPanel({
 
         {notice && (
           <div className="auth-success">
-            <strong>Готово</strong>
+            <strong>Письмо</strong>
             <p>{notice}</p>
           </div>
         )}
@@ -1026,7 +1022,7 @@ function MigrationBanner({ busy, onMigrate, onDismiss }: { busy: boolean; onMigr
         <p>Можно перенести профиль и дневник в Supabase. Локальные данные не будут удалены автоматически.</p>
       </div>
       <div className="migration-actions">
-        <button type="button" onClick={onMigrate} disabled={busy}>{busy ? "Перенос..." : "Перенести"}</button>
+        <button type="button" onClick={onMigrate} disabled={busy}>{busy ? "Переносим..." : "Перенести"}</button>
         <button type="button" onClick={onDismiss} disabled={busy}>Позже</button>
       </div>
     </div>
@@ -1065,15 +1061,15 @@ function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; t
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="macro-panel" delay={60}>
-        <MacroProgress label={t("protein")} icon="🥩" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
-        <MacroProgress label={t("fat")} icon="🧈" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
-        <MacroProgress label={t("carbs")} icon="🍚" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
+        <MacroProgress label={t("protein")} icon="??" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
+        <MacroProgress label={t("fat")} icon="??" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
+        <MacroProgress label={t("carbs")} icon="??" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="today-card" delay={100}>
         <div className="section-heading compact">
           <div>
-            <p>🔥 {t("today")}</p>
+            <p>?? {t("today")}</p>
             <h2>{t("stats")}</h2>
           </div>
         </div>
@@ -1138,7 +1134,10 @@ function SettingsPanel({
   onClearDiary,
   onClearChat,
   onExportDiary,
-  onImportDiary
+  onImportDiary,
+  authEmail,
+  authLoading,
+  onSignOut
 }: {
   settings: AppSettings;
   onChange: (patch: Partial<AppSettings>) => void;
@@ -1147,6 +1146,9 @@ function SettingsPanel({
   onClearChat: () => void;
   onExportDiary: () => void;
   onImportDiary: (file: File) => void;
+  authEmail: string;
+  authLoading: boolean;
+  onSignOut: () => void;
 }) {
   const [nicknameDraft, setNicknameDraft] = useState(settings.nickname);
   const [nicknameError, setNicknameError] = useState("");
@@ -1261,6 +1263,17 @@ function SettingsPanel({
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="settings-card" delay={180}>
+        <h3>Аккаунт</h3>
+        <div className="account-settings">
+          <span>{authEmail}</span>
+          <button type="button" onClick={onSignOut} disabled={authLoading}>
+            <LogOut size={18} />
+            Выйти
+          </button>
+        </div>
+      </RevealOnScroll>
+
+      <RevealOnScroll as="section" className="settings-card" delay={220}>
         <h3>{t("aboutApp")}</h3>
         <div className="about-list">
           <span>{t("privacy")}</span>
@@ -1364,14 +1377,12 @@ function ProfileField({ label, value, inputMode, onChange }: { label: string; va
 
 function MenuCard({ icon, title, text, onClick }: { icon: ReactNode; title: string; text: string; onClick: () => void }) {
   return (
-    <RevealOnScroll>
-      <button className="menu-card" type="button" onClick={onClick}>
-        <span className="menu-card__icon">{icon}</span>
-        <strong>{title}</strong>
-        <small>{text}</small>
-        <span className="menu-card__arrow"><ChevronRight size={18} /></span>
-      </button>
-    </RevealOnScroll>
+    <button className="menu-card" type="button" onClick={onClick}>
+      <span className="menu-card__icon">{icon}</span>
+      <strong>{title}</strong>
+      <small>{text}</small>
+      <span className="menu-card__arrow"><ChevronRight size={18} /></span>
+    </button>
   );
 }
 
@@ -1475,7 +1486,7 @@ function calculateTargets(values: ProfileFormValues) {
 
 function createManualItem(source: string): NutritionItem {
   return {
-    name: source || "Еда",
+    name: source || "Блюдо",
     weight_g: 0,
     calories: 0,
     protein_g: 0,
@@ -1515,8 +1526,8 @@ function vibrate() {
 }
 
 function errorText(error: unknown) {
-  if (!(error instanceof Error)) return "Проблема с подключением. Попробуйте позже.";
-  if (error.message === "timeout") return "Запрос занял слишком много времени. Попробуйте ещё раз или задайте вопрос короче.";
+  if (!(error instanceof Error)) return "Проблема с распознаванием. Попробуйте позже.";
+  if (error.message === "timeout") return "Запрос занял больше 15 секунд. Попробуйте ещё раз или задайте вопрос короче.";
   if (error.message === "parse_failed") return "ИИ вернул неполный ответ. Заполните значения вручную.";
   if (error.message === "gemini_key_missing") return "На хостинге не задан серверный ключ анализа.";
   if (error.message === "rate_limited") return "Сервис анализа временно перегружен, попробуйте через минуту.";
@@ -1554,7 +1565,7 @@ function countCalorieStreak(entries: DiaryEntry[], dailyGoal: number) {
 }
 
 function looksLikeFood(text: string) {
-  return /(рассчитай кбжу|посчитай кбжу|сколько кбжу|съел|съела|ел |ела |завтрак|обед|ужин|перекус|\d+\s?(г|гр|gram|grams|g)\b|яйц|кур|рис|греч|творог|молок|сыр|мяс|рыб|хлеб|салат|суп|карто|кофе|банан|яблок|овсян|ate|i had|food log|meal log|breakfast|lunch|dinner|chicken|rice|egg|oat|banana)/i.test(text);
+  return /(рассчитай кбжу|посчитай кбжу|сколько кбжу|съел|съела|ел |ела |завтрак|обед|ужин|перекус|\d+\s?(г|гр|gram|grams|g)\b|яйцо|курица|рис|гречка|овсянка|творог|молоко|сыр|мясо|рыба|хлеб|салат|суп|картошка|кофе|банан|ate|i had|food log|meal log|breakfast|lunch|dinner|chicken|rice|egg|oat|banana)/i.test(text);
 }
 
 function loadSettings(): AppSettings {
