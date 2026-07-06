@@ -1,0 +1,48 @@
+:root {
+  --bg-main: #030303;
+  --bg-soft: #080808;
+  --bg-panel: #101010;
+  --bg-panel-strong: #161616;
+  --text-main: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.74);
+  --text-muted: rgba(255, 255, 255, 0.44);
+  --text-disabled: rgba(255, 255, 255, 0.28);
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-strong: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+  --white-glow: 0 0 24px rgba(255, 255, 255, 0.12);
+  --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.45);
+  --shadow-panel: 0 20px 80px rgba(0, 0, 0, 0.55);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --transition-fast: 160ms ease;
+  --transition-normal: 260ms ease;
+  --transition-slow: 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  --blur-glass: 18px;
+  --danger: #ff6565;
+  --warning: #f0d58a;
+  --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", sans-serif;
+  --z-header: 30;
+  --z-nav: 40;
+  --z-floating: 35;
+  --z-toast: 60;
+}
+
+:root[data-theme="light"] {
+  --bg-main: #030303;
+  --bg-soft: #080808;
+  --bg-panel: #101010;
+  --bg-panel-strong: #161616;
+  --text-main: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.74);
+  --text-muted: rgba(255, 255, 255, 0.44);
+  --text-disabled: rgba(255, 255, 255, 0.28);
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-strong: rgba(255, 255, 255, 0.09);
+  --glass-border: rgba(255, 255, 255, 0.11);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+}
