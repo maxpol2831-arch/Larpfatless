@@ -1,0 +1,132 @@
+.reveal-up {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  transition:
+    opacity var(--transition-slow),
+    transform var(--transition-slow);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal-up.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes aurora-text-flow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes skeleton-loading {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes avatar-wink {
+  0%,
+  100% {
+    transform: rotate(0) scale(1);
+  }
+  35% {
+    transform: rotate(-5deg) scale(1.06);
+  }
+  70% {
+    transform: rotate(5deg) scale(1.03);
+  }
+}
+
+.avatar-button.is-winking {
+  animation: avatar-wink 0.8s ease both;
+}
+
+.skeleton-panel {
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent),
+    var(--glass-bg);
+  background-size: 220% 100%;
+  animation: skeleton-loading 1.2s linear infinite;
+}
+
+.menu-card,
+.food-card,
+.diary-entry,
+.settings-card,
+.primary-button,
+.icon-text-button,
+.header-icon-button {
+  will-change: transform;
+}
+
+.menu-card:hover,
+.food-card:hover,
+.diary-entry:hover,
+.settings-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border-strong);
+}
+
+.shake {
+  animation: scale-in 0.28s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .reveal-up {
+    opacity: 1;
+    transform: none;
+  }
+
+  .aurora-text {
+    animation: none;
+    background-position: 50% 50%;
+  }
+}
