@@ -37,7 +37,10 @@ import { MainMenuHeader } from "./components/MainMenuHeader";
 import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
 import { AuroraText } from "./components/ui/AuroraText";
+import { AnimatedCircularProgressBar } from "./components/ui/AnimatedCircularProgressBar";
+import { AvatarCircles } from "./components/ui/AvatarCircles";
 import { RevealOnScroll } from "./components/ui/RevealOnScroll";
+import { getAccountAvatarSet } from "./lib/accountAvatars";
 import { authErrorText, handleAuthRedirect, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
 import {
@@ -75,6 +78,7 @@ type Screen = "home" | "chat" | "diary" | "profile" | "ai-calories" | "settings"
 type ProfileFormValues = Pick<UserProfile, "name" | "gender" | "age" | "heightCm" | "weightKg" | "activityLevel" | "goal" | "weeklyWeightChangeKg">;
 type ChatMessage = { id: string; role: "user" | "assistant"; text: string };
 type TFunction = (key: TranslationKey) => string;
+type CalorieProgressOverlayState = { id: string; total: number; goal: number; added: number };
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
@@ -196,6 +200,7 @@ export function App() {
   const [imagePreview, setImagePreview] = useState("");
   const [toast, setToast] = useState("");
   const [avatarWink, setAvatarWink] = useState(false);
+  const [calorieProgressOverlay, setCalorieProgressOverlay] = useState<CalorieProgressOverlayState | null>(null);
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const t = useMemo(() => createTranslator(settings.language), [settings.language]);
   const titleText = settings.nickname.trim() || t("defaultNickname");
@@ -325,6 +330,12 @@ export function App() {
       return () => window.clearTimeout(timer);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (!calorieProgressOverlay) return;
+    const timer = window.setTimeout(() => setCalorieProgressOverlay(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [calorieProgressOverlay]);
 
   useEffect(() => {
     return () => {
@@ -529,6 +540,12 @@ export function App() {
 
     await saveCloudMeal(authUser.id, entry);
     setEntries((current) => [entry, ...current]);
+    setCalorieProgressOverlay({
+      id: entry.id,
+      total: todayTotal.calories + entry.total.calories,
+      goal: profile?.dailyCalories ?? Math.max(todayTotal.calories + entry.total.calories, 1),
+      added: entry.total.calories
+    });
     setDraft(null);
     setSelectedImage(null);
     setImagePreview("");
@@ -704,9 +721,11 @@ export function App() {
       {!isOnline && <div className="offline-banner">{t("offline")}</div>}
       {toast && <div className="toast">{toast}</div>}
       {calorieStreak >= 3 && <div className="streak-banner">Вы уже {calorieStreak} дня держитесь в дневной норме. Хорошая серия.</div>}
+      {calorieProgressOverlay && <CalorieProgressOverlay progress={calorieProgressOverlay} />}
 
       <MainMenuHeader
         profile={profile}
+        accountId={authUser.id}
         today={todayTotal}
         title={titleText}
         dailyLabel={`${t("kcal")} ${t("today").toLowerCase()}`}
@@ -744,7 +763,7 @@ export function App() {
 
       {screen === "home" && (
         <section className="screen">
-          <HomeDashboard profile={profile} today={todayTotal} entries={todayEntries} t={t} />
+          <HomeDashboard profile={profile} today={todayTotal} entries={todayEntries} accountId={authUser.id} t={t} />
           <div className="menu-grid">
             <MenuCard icon={<Bot size={24} />} title={t("aiChat")} text={t("aiChatText")} onClick={() => setScreen("chat")} />
             <MenuCard icon={<FileText size={24} />} title={t("diary")} text={t("diaryText")} onClick={() => setScreen("diary")} />
@@ -1029,11 +1048,41 @@ function MigrationBanner({ busy, onMigrate, onDismiss }: { busy: boolean; onMigr
   );
 }
 
-function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; today: NutritionTotal; entries: DiaryEntry[]; t: TFunction }) {
+function CalorieProgressOverlay({ progress }: { progress: CalorieProgressOverlayState }) {
+  const [animatedValue, setAnimatedValue] = useState(0);
+  const percentage = Math.round((progress.total / Math.max(progress.goal, 1)) * 100);
+
+  useEffect(() => {
+    setAnimatedValue(0);
+    const frame = window.requestAnimationFrame(() => setAnimatedValue(progress.total));
+    return () => window.cancelAnimationFrame(frame);
+  }, [progress.id, progress.total]);
+
+  return (
+    <div className="calorie-progress-overlay" role="status" aria-live="polite">
+      <div className="calorie-progress-overlay__panel">
+        <AnimatedCircularProgressBar
+          value={animatedValue}
+          max={Math.max(progress.goal, progress.total, 1)}
+          gaugePrimaryColor="rgba(255, 255, 255, 0.98)"
+          gaugeSecondaryColor="rgba(255, 255, 255, 0.12)"
+        />
+        <div className="calorie-progress-overlay__copy">
+          <span>Добавлено {Math.round(progress.added)} ккал</span>
+          <strong>{Math.round(progress.total)} ккал за сегодня</strong>
+          <small>{percentage}% дневной нормы</small>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeDashboard({ profile, today, entries, accountId, t }: { profile: UserProfile; today: NutritionTotal; entries: DiaryEntry[]; accountId: string; t: TFunction }) {
   const caloriesLeft = Math.max(0, profile.dailyCalories - today.calories);
   const recentEntries = entries.slice(0, 3);
   const isEn = t("menu") === "Menu";
   const displayName = profile.name.trim() || "LarpFatless";
+  const avatarUrls = getAccountAvatarSet(accountId || displayName).map((avatar) => ({ imageUrl: avatar.imageUrl }));
 
   return (
     <div className="dashboard">
@@ -1042,6 +1091,7 @@ function HomeDashboard({ profile, today, entries, t }: { profile: UserProfile; t
           <span>LarpFatless cloud</span>
           <h2><AuroraText speed={0.72}>{isEn ? `${displayName}, nutrition cockpit` : `${displayName}, центр питания`}</AuroraText></h2>
           <p>{isEn ? "Live balance of calories, macros and today's meals." : "Живой баланс калорий, макроцелей и сегодняшних приёмов пищи."}</p>
+          <AvatarCircles avatarUrls={avatarUrls} numPeople={Math.max(entries.length - 5, 0)} />
         </div>
         <div className="dashboard-hero__ring">
           <AnimatedProgressRing value={today.calories} target={profile.dailyCalories} />
