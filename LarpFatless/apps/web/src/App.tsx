@@ -38,9 +38,7 @@ import { createTranslator } from "./i18n/translations";
 import { WaveformView } from "./components/WaveformView";
 import { AuroraText } from "./components/ui/AuroraText";
 import { AnimatedCircularProgressBar } from "./components/ui/AnimatedCircularProgressBar";
-import { AvatarCircles } from "./components/ui/AvatarCircles";
 import { RevealOnScroll } from "./components/ui/RevealOnScroll";
-import { getAccountAvatarSet } from "./lib/accountAvatars";
 import { authErrorText, handleAuthRedirect, loginWithEmail, logout, observeAuth, registerWithEmail } from "./services/authService";
 import { analyzeImage, analyzeText } from "./services/aiNutritionService";
 import {
@@ -1083,7 +1081,6 @@ function HomeDashboard({ profile, today, entries, accountId, t }: { profile: Use
   const recentEntries = entries.slice(0, 3);
   const isEn = t("menu") === "Menu";
   const displayName = profile.name.trim() || "LarpFatless";
-  const avatarUrls = getAccountAvatarSet(accountId || displayName).map((avatar) => ({ imageUrl: avatar.imageUrl }));
 
   return (
     <div className="dashboard">
@@ -1092,7 +1089,6 @@ function HomeDashboard({ profile, today, entries, accountId, t }: { profile: Use
           <span>LarpFatless cloud</span>
           <h2><AuroraText speed={0.72}>{isEn ? `${displayName}, nutrition cockpit` : `${displayName}, центр питания`}</AuroraText></h2>
           <p>{isEn ? "Live balance of calories, macros and today's meals." : "Живой баланс калорий, макроцелей и сегодняшних приёмов пищи."}</p>
-          <AvatarCircles avatarUrls={avatarUrls} numPeople={Math.max(entries.length - 5, 0)} />
         </div>
         <div className="dashboard-hero__ring">
           <AnimatedProgressRing value={today.calories} target={profile.dailyCalories} />
