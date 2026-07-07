@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -18,6 +18,7 @@ import {
   Mail,
   Mic,
   Moon,
+  Plus,
   RotateCcw,
   Save,
   Send,
@@ -760,8 +761,21 @@ export function App() {
 
       {screen === "home" && (
         <section className="screen">
-          <HomeDashboard profile={profile} today={todayTotal} entries={todayEntries} accountId={authUser.id} t={t} />
-          <div className="menu-grid">
+          <HomeDashboard
+            profile={profile}
+            today={todayTotal}
+            week={weekTotal}
+            entries={entries}
+            streak={calorieStreak}
+            canInstall={Boolean(installPrompt)}
+            onAddFood={() => setScreen("chat")}
+            onAnalyzePhoto={() => setScreen("ai-calories")}
+            onOpenChat={() => setScreen("chat")}
+            onOpenDiary={() => setScreen("diary")}
+            onInstall={installApp}
+            t={t}
+          />
+          <div className="menu-grid menu-grid--compact">
             <MenuCard icon={<Bot size={24} />} title={t("aiChat")} text={t("aiChatText")} onClick={() => setScreen("chat")} />
             <MenuCard icon={<FileText size={24} />} title={t("diary")} text={t("diaryText")} onClick={() => setScreen("diary")} />
             <MenuCard icon={<Camera size={24} />} title="AI Calories" text={t("aiCaloriesText")} onClick={() => setScreen("ai-calories")} />
@@ -774,6 +788,11 @@ export function App() {
             </button>
           )}
         </section>
+      )}
+      {screen === "home" && (
+        <button className="floating-add-button" type="button" onClick={() => setScreen("chat")} aria-label="Добавить еду">
+          <Plus size={22} />
+        </button>
       )}
 
       {screen === "chat" && (
@@ -883,6 +902,11 @@ export function App() {
                     {t("delete")}
                   </button>
                 </div>
+                <div className="diary-entry__macros">
+                  <span>{t("protein")}: {Math.round(entry.total.protein_g)} {t("grams")}</span>
+                  <span>{t("fat")}: {Math.round(entry.total.fat_g)} {t("grams")}</span>
+                  <span>{t("carbs")}: {Math.round(entry.total.carbs_g)} {t("grams")}</span>
+                </div>
                 {entry.items.map((item, index) => (
                   <FoodItemCard key={`${entry.id}-${item.name}-${index}`} item={item} index={index} />
                 ))}
@@ -927,7 +951,7 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
         <Flame size={26} />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
-      <p>Сначала создадим профиль. Без него приложение не откроет меню, потому что нормы КБЖУ должны быть личными.</p>
+      <p className="auth-subtitle">AI дневник питания со своим личным фитнес тренером</p>
       <ProfileForm initial={defaultForm} onSubmit={onSubmit} submitLabel="Создать профиль" />
     </section>
   );
@@ -970,6 +994,7 @@ function AuthPanel({
         <Flame size={26} />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
+      <p className="auth-subtitle">AI дневник питания со своим личным фитнес тренером</p>
 
       <div className="panel auth-panel">
         <div className="auth-mode">
@@ -1074,19 +1099,60 @@ function CalorieProgressOverlay({ progress }: { progress: CalorieProgressOverlay
   );
 }
 
-function HomeDashboard({ profile, today, entries, accountId, t }: { profile: UserProfile; today: NutritionTotal; entries: DiaryEntry[]; accountId: string; t: TFunction }) {
+function HomeDashboard({
+  profile,
+  today,
+  week,
+  entries,
+  streak,
+  canInstall,
+  onAddFood,
+  onAnalyzePhoto,
+  onOpenChat,
+  onOpenDiary,
+  onInstall,
+  t
+}: {
+  profile: UserProfile;
+  today: NutritionTotal;
+  week: NutritionTotal;
+  entries: DiaryEntry[];
+  streak: number;
+  canInstall: boolean;
+  onAddFood: () => void;
+  onAnalyzePhoto: () => void;
+  onOpenChat: () => void;
+  onOpenDiary: () => void;
+  onInstall: () => void;
+  t: TFunction;
+}) {
   const caloriesLeft = Math.max(0, profile.dailyCalories - today.calories);
-  const recentEntries = entries.slice(0, 3);
+  const recentEntries = entries.filter((entry) => isToday(entry.createdAt)).slice(0, 3);
   const isEn = t("menu") === "Menu";
   const displayName = profile.name.trim() || "LarpFatless";
+  const progressPercent = Math.min(100, Math.round((today.calories / Math.max(profile.dailyCalories, 1)) * 100));
+  const dayTip = isEn
+    ? "Keep the next meal simple: protein first, then slow carbs and water."
+    : "Следующий приём сделайте простым: сначала белок, затем медленные углеводы и вода.";
+  const weeklyAverage = Math.round(week.calories / 7);
 
   return (
     <div className="dashboard">
       <RevealOnScroll as="section" className="dashboard-hero">
         <div className="dashboard-hero__intro">
-          <span>LarpFatless cloud</span>
-          <h2><AuroraText speed={0.72}>{isEn ? `${displayName}, nutrition cockpit` : `${displayName}, центр питания`}</AuroraText></h2>
-          <p>{isEn ? "Live balance of calories, macros and today's meals." : "Живой баланс калорий, макроцелей и сегодняшних приёмов пищи."}</p>
+          <span>{isEn ? "Today cockpit" : "Панель сегодня"}</span>
+          <h2><AuroraText speed={0.72}>{isEn ? `${displayName}, stay in range` : `${displayName}, держим норму`}</AuroraText></h2>
+          <p>{isEn ? "Calories, macros, recent meals and AI actions in one clean workspace." : "Калории, БЖУ, последние приёмы и быстрые AI-действия в одном чистом рабочем экране."}</p>
+          <div className="hero-actions">
+            <button type="button" onClick={onAddFood}>
+              <Plus size={18} />
+              {isEn ? "Add food" : "Добавить еду"}
+            </button>
+            <button type="button" onClick={onAnalyzePhoto}>
+              <Camera size={18} />
+              {isEn ? "Analyze photo" : "Фото-анализ"}
+            </button>
+          </div>
         </div>
         <div className="dashboard-hero__ring">
           <AnimatedProgressRing value={today.calories} target={profile.dailyCalories} />
@@ -1103,12 +1169,54 @@ function HomeDashboard({ profile, today, entries, accountId, t }: { profile: Use
           <span>{t("dailyGoal")}</span>
           <strong>{profile.dailyCalories} {t("kcal")}</strong>
         </div>
+        <div className="dashboard-stat dashboard-stat--progress">
+          <span>{isEn ? "Progress" : "Прогресс"}</span>
+          <strong>{progressPercent}%</strong>
+        </div>
+      </RevealOnScroll>
+
+      <RevealOnScroll as="section" className="quick-action-panel" delay={40}>
+        <button type="button" onClick={onAddFood}>
+          <Plus size={19} />
+          <span>{isEn ? "Text input" : "Ввести текстом"}</span>
+        </button>
+        <button type="button" onClick={onAnalyzePhoto}>
+          <Camera size={19} />
+          <span>{isEn ? "Photo scan" : "Проанализировать фото"}</span>
+        </button>
+        <button type="button" onClick={onOpenChat}>
+          <Sparkles size={19} />
+          <span>{isEn ? "AI chat" : "Открыть ИИ-чат"}</span>
+        </button>
+        <button type="button" onClick={onOpenDiary}>
+          <FileText size={19} />
+          <span>{isEn ? "Diary" : "Дневник"}</span>
+        </button>
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="macro-panel" delay={60}>
         <MacroProgress label={t("protein")} icon="Б" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
         <MacroProgress label={t("fat")} icon="Ж" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
         <MacroProgress label={t("carbs")} icon="У" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
+      </RevealOnScroll>
+
+      <RevealOnScroll as="section" className="insight-grid" delay={90}>
+        <article className="insight-card">
+          <span>{isEn ? "AI tip" : "Совет дня"}</span>
+          <strong>{dayTip}</strong>
+        </article>
+        <article className="insight-card">
+          <span>{isEn ? "Week average" : "Среднее за неделю"}</span>
+          <strong>{weeklyAverage} {t("kcal")}</strong>
+          <small>{streak > 0 ? `${streak} ${isEn ? "day streak" : "дн. серия"}` : isEn ? "Start a streak today" : "Начните серию сегодня"}</small>
+        </article>
+        {canInstall && (
+          <article className="insight-card insight-card--install">
+            <span>PWA</span>
+            <strong>{isEn ? "Install as an iPhone-style app" : "Установите как iPhone-приложение"}</strong>
+            <button type="button" onClick={onInstall}>{isEn ? "Install" : "Установить"}</button>
+          </article>
+        )}
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="today-card" delay={100}>
@@ -1160,9 +1268,12 @@ function MacroProgress({ label, icon, value, target, unit }: { label: string; ic
   const percent = Math.min(100, Math.round((value / Math.max(1, target)) * 100));
 
   return (
-    <div className="macro-progress">
+    <div className="macro-progress" style={{ "--macro-percent": `${percent}%` } as CSSProperties}>
+      <div className="macro-progress__ring">
+        <span>{icon}</span>
+      </div>
       <div className="macro-progress__top">
-        <span>{icon} {label}</span>
+        <span>{label}</span>
         <strong>{Math.round(value)} / {target} {unit}</strong>
       </div>
       <div className="macro-progress__track">
