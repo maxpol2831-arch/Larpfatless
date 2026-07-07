@@ -146,7 +146,7 @@ const SETTINGS_KEY = "larpfatless-settings-v1";
 const CHAT_KEY = "larpfatless-chat-v1";
 const LANGUAGE_KEY = "appLanguage";
 const NICKNAME_KEY = "larpfatless-nickname";
-const appIconUrl = "/icons/app-icon.png";
+const appIconUrl = "/icons/app-avatar.png";
 
 const inputOptions = [
   { value: "text", label: "Текст" },
