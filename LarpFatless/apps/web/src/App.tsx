@@ -148,6 +148,7 @@ const SETTINGS_KEY = "larpfatless-settings-v1";
 const CHAT_KEY = "larpfatless-chat-v1";
 const LANGUAGE_KEY = "appLanguage";
 const NICKNAME_KEY = "larpfatless-nickname";
+const appIconUrl = "/icons/app-icon.png";
 
 const inputOptions = [
   { value: "text", label: "Текст" },
@@ -215,13 +216,13 @@ export function App() {
     () =>
       settings.language === "en"
         ? [
-            { icon: "??", label: "Track food", text: "Calculate macros: chicken breast 150 g, rice 200 g, vegetables 100 g" },
-            { icon: "??", label: "Workout plan", text: "Create a weekly workout plan for my goal" },
-            { icon: "??", label: "Meal plan", text: "Create a daily meal plan for my calories and macros" },
-            { icon: "??", label: "Muscle gain", text: "How can I gain muscle without adding too much fat?" },
-            { icon: "??", label: "Weight loss", text: "What calorie deficit should I choose for weight loss?" },
-            { icon: "?", label: "Cutting", text: "How should I cut while keeping muscle?" },
-            { icon: "??", label: "Ask", text: "How many calories can I still eat today?" }
+            { icon: "F", label: "Track food", text: "Calculate macros: chicken breast 150 g, rice 200 g, vegetables 100 g" },
+            { icon: "W", label: "Workout plan", text: "Create a weekly workout plan for my goal" },
+            { icon: "M", label: "Meal plan", text: "Create a daily meal plan for my calories and macros" },
+            { icon: "G", label: "Muscle gain", text: "How can I gain muscle without adding too much fat?" },
+            { icon: "L", label: "Weight loss", text: "What calorie deficit should I choose for weight loss?" },
+            { icon: "C", label: "Cutting", text: "How should I cut while keeping muscle?" },
+            { icon: "Q", label: "Ask", text: "How many calories can I still eat today?" }
           ]
         : quickPrompts,
     [settings.language]
@@ -454,7 +455,7 @@ export function App() {
       return;
     }
 
-    if (!settings.assistantEnabled && /[??]/.test(trimmed) && !looksLikeFood(trimmed)) {
+    if (!settings.assistantEnabled && trimmed.includes("?") && !looksLikeFood(trimmed)) {
       setChatMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "assistant", text: t("assistantDisabledAdvice") }
@@ -927,7 +928,7 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
   return (
     <section className="screen onboarding">
       <div className="brand-mark">
-        <Flame size={26} />
+        <img src={appIconUrl} alt="" />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
       <p>Сначала создадим профиль. Без него приложение не откроет меню, потому что нормы КБЖУ должны быть личными.</p>
@@ -970,7 +971,7 @@ function AuthPanel({
   return (
     <section className="screen auth-screen">
       <div className="brand-mark">
-        <Flame size={26} />
+        <img src={appIconUrl} alt="" />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
 
@@ -1111,15 +1112,15 @@ function HomeDashboard({ profile, today, entries, accountId, t }: { profile: Use
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="macro-panel" delay={60}>
-        <MacroProgress label={t("protein")} icon="??" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
-        <MacroProgress label={t("fat")} icon="??" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
-        <MacroProgress label={t("carbs")} icon="??" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
+        <MacroProgress label={t("protein")} icon="Б" value={today.protein_g} target={profile.proteinGoal} unit={t("grams")} />
+        <MacroProgress label={t("fat")} icon="Ж" value={today.fat_g} target={profile.fatGoal} unit={t("grams")} />
+        <MacroProgress label={t("carbs")} icon="У" value={today.carbs_g} target={profile.carbsGoal} unit={t("grams")} />
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="today-card" delay={100}>
         <div className="section-heading compact">
           <div>
-            <p>?? {t("today")}</p>
+            <p>{t("today")}</p>
             <h2>{t("stats")}</h2>
           </div>
         </div>
