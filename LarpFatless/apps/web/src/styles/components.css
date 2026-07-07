@@ -16,7 +16,9 @@
 .empty-state,
 .error-card,
 .dashboard-hero,
+.quick-action-panel,
 .macro-panel,
+.insight-card,
 .today-card,
 .recent-card,
 .settings-card,
@@ -42,7 +44,9 @@
 .diary-entry::before,
 .empty-state::before,
 .dashboard-hero::before,
+.quick-action-panel::before,
 .macro-panel::before,
+.insight-card::before,
 .today-card::before,
 .recent-card::before,
 .settings-card::before,
@@ -324,14 +328,17 @@
 .dashboard-hero {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
-  padding: 22px;
+  gap: 16px;
+  padding: 24px;
   border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 78% 12%, rgba(255, 255, 255, 0.12), transparent 26%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.032));
 }
 
 .dashboard-hero__intro {
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
 .dashboard-hero__intro span,
@@ -345,7 +352,7 @@
 
 .dashboard-hero__intro h2 {
   margin: 0;
-  font-size: 2rem;
+  font-size: clamp(2.05rem, 9vw, 3.7rem);
   line-height: 1.02;
 }
 
@@ -362,6 +369,34 @@
   padding: 8px 0;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.hero-actions button,
+.quick-action-panel button,
+.insight-card button,
+.floating-add-button {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  background: var(--action-bg);
+  color: var(--action-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 900;
+  transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.hero-actions button {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
 .dashboard-stat {
   min-height: 84px;
   display: grid;
@@ -375,6 +410,34 @@
 
 .dashboard-stat strong {
   font-size: 1.22rem;
+}
+
+.dashboard-stat--progress strong {
+  font-size: 1.52rem;
+}
+
+.quick-action-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-xl);
+}
+
+.quick-action-panel button {
+  min-height: 58px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.062);
+  color: var(--text-main);
+}
+
+.quick-action-panel button:hover,
+.hero-actions button:hover,
+.insight-card button:hover,
+.floating-add-button:hover {
+  transform: translateY(-2px);
+  border-color: var(--glass-border-strong);
+  background: var(--action-bg-hover);
 }
 
 .progress-ring {
@@ -557,20 +620,50 @@
   padding: 18px;
 }
 
-.macro-progress + .macro-progress {
-  margin-top: 16px;
+.macro-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.macro-progress {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.macro-progress__ring {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, var(--bg-panel) 52%, transparent 53%),
+    conic-gradient(#fff var(--macro-percent), rgba(255, 255, 255, 0.12) 0);
+  box-shadow: inset 0 0 0 1px var(--glass-border), 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+.macro-progress__ring span {
+  color: var(--text-main);
+  font-weight: 950;
 }
 
 .macro-progress__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 9px;
+  display: grid;
+  gap: 6px;
 }
 
-.macro-progress__top span:first-child,
-.quick-prompts span {
-  filter: grayscale(1);
+.macro-progress__top span:first-child {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .macro-progress__track {
@@ -585,6 +678,40 @@
   border-radius: inherit;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.72), #fff);
   transition: width 0.8s var(--transition-slow);
+}
+
+.insight-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.insight-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.insight-card span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.insight-card strong {
+  color: var(--text-main);
+  line-height: 1.32;
+}
+
+.insight-card small {
+  color: var(--text-soft);
+  font-weight: 780;
+}
+
+.insight-card button {
+  width: fit-content;
+  min-height: 38px;
+  padding: 0 14px;
 }
 
 .summary-grid,
@@ -640,9 +767,13 @@
   gap: 12px;
 }
 
+.menu-grid--compact {
+  margin-top: 14px;
+}
+
 .menu-card {
   width: 100%;
-  min-height: 112px;
+  min-height: 102px;
   display: grid;
   grid-template-columns: auto 1fr auto;
   grid-template-areas:
@@ -703,6 +834,16 @@
   align-items: center;
   gap: 8px;
   font-weight: 850;
+}
+
+.floating-add-button {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 86px);
+  z-index: var(--z-floating);
+  width: 58px;
+  height: 58px;
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .glass-ui-button,
@@ -878,6 +1019,7 @@
   display: grid;
   align-content: center;
   text-align: center;
+  gap: 10px;
 }
 
 .auth-screen {
@@ -929,15 +1071,25 @@
 
 .auth-screen h1,
 .onboarding h1 {
-  margin: 0 0 20px;
+  margin: 0;
   font-size: 2.42rem;
   line-height: 1;
+}
+
+.auth-subtitle {
+  width: min(100%, 420px);
+  margin: 0 auto 12px;
+  color: var(--text-soft);
+  line-height: 1.45;
 }
 
 .auth-panel {
   display: grid;
   gap: 16px;
   border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.12), transparent 34%),
+    var(--glass-bg);
 }
 
 .auth-mode {
@@ -997,7 +1149,10 @@
   max-height: min(48dvh, 430px);
   margin-bottom: 16px;
   overflow: auto;
-  padding: 0 2px 8px 0;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.026);
   scroll-behavior: smooth;
 }
 
@@ -1010,7 +1165,7 @@
   padding: 13px 15px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.062);
   color: var(--text-main);
   line-height: 1.48;
   box-shadow: var(--shadow-soft);
@@ -1019,7 +1174,7 @@
 
 .chat-message--user {
   justify-self: end;
-  background: rgba(255, 255, 255, 0.115);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .chat-message__avatar {
@@ -1191,6 +1346,8 @@
 .diary-entry {
   padding: 16px;
   margin-bottom: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
 }
 
 .diary-entry__head strong,
@@ -1201,6 +1358,23 @@
 .diary-entry__head span {
   color: var(--text-muted);
   margin-top: 4px;
+}
+
+.diary-entry__macros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.diary-entry__macros span {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-pill);
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-soft);
+  font-size: 0.74rem;
+  font-weight: 850;
 }
 
 .diary-clear {
@@ -1381,6 +1555,18 @@
   .quick-prompts {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .quick-action-panel {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .insight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .insight-card--install {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -1419,6 +1605,8 @@
 
   .dashboard,
   .menu-grid,
+  .quick-action-panel,
+  .insight-grid,
   .settings-stack {
     width: min(100%, 940px);
     margin-left: auto;
@@ -1438,6 +1626,10 @@
     grid-column: 3 / 6;
   }
 
+  .dashboard-stat--progress {
+    grid-column: span 1;
+  }
+
   .macro-panel {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1451,6 +1643,11 @@
   .settings-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .floating-add-button {
+    right: calc((100vw - min(100%, 940px)) / 2 + 18px);
+    bottom: 28px;
+  }
 }
 
 @media (min-width: 1440px) {
@@ -1461,6 +1658,8 @@
   .screen,
   .dashboard,
   .menu-grid,
+  .quick-action-panel,
+  .insight-grid,
   .settings-stack,
   .main-tabs {
     width: min(100%, 1040px);
