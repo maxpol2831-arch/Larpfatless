@@ -146,8 +146,6 @@ const SETTINGS_KEY = "larpfatless-settings-v1";
 const CHAT_KEY = "larpfatless-chat-v1";
 const LANGUAGE_KEY = "appLanguage";
 const NICKNAME_KEY = "larpfatless-nickname";
-const appIconUrl = "/icons/app-avatar.png";
-
 const inputOptions = [
   { value: "text", label: "Текст" },
   { value: "voice", label: "Голос" }
@@ -926,7 +924,7 @@ function OnboardingForm({ onSubmit }: { onSubmit: (values: ProfileFormValues) =>
   return (
     <section className="screen onboarding">
       <div className="brand-mark">
-        <img src={appIconUrl} alt="" />
+        <Flame size={26} />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
       <p>Сначала создадим профиль. Без него приложение не откроет меню, потому что нормы КБЖУ должны быть личными.</p>
@@ -969,7 +967,7 @@ function AuthPanel({
   return (
     <section className="screen auth-screen">
       <div className="brand-mark">
-        <img src={appIconUrl} alt="" />
+        <Flame size={26} />
       </div>
       <h1><AuroraText speed={0.82}>LarpFatless</AuroraText></h1>
 
