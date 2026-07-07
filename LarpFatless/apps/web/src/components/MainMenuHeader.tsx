@@ -56,7 +56,6 @@ export function MainMenuHeader({ profile, accountId, today, title, dailyLabel, o
         aria-label="Открыть профиль"
       >
         <img src={accountAvatar.imageUrl} alt="" onError={(event) => (event.currentTarget.style.display = "none")} />
-        <span>{profile.name.slice(0, 2).toUpperCase()}</span>
       </button>
       <div className="main-header__copy">
         <p>{title}</p>
