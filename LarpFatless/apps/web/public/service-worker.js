@@ -1,5 +1,5 @@
-const CACHE_NAME = "larpfatless-pwa-v3";
-const STATIC_ASSETS = ["/", "/index.html", "/manifest.json", "/icons/app-icon.svg"];
+const CACHE_NAME = "larpfatless-pwa-v4";
+const STATIC_ASSETS = ["/", "/index.html", "/manifest.json", "/icons/app-icon.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
